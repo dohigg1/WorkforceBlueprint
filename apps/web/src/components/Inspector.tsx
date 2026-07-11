@@ -161,7 +161,7 @@ export function Inspector({ node, nodes, scenarioId, colourMode }: Props): JSX.E
         ) : (
           <>
             <span>
-              <i style={{ background: '#33507a' }} />
+              <i style={{ background: '#aab6cf' }} />
               low span
             </span>
             <span>

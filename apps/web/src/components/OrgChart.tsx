@@ -15,13 +15,13 @@ const NW = 128;
 const NH = 34;
 
 const DIV_COLOURS: Record<string, string> = {
-  Executive: '#c9d2e4',
-  Technology: '#37c9e2',
-  Commercial: '#7b8cf0',
-  Operations: '#46c98b',
-  Finance: '#e0a83a',
-  People: '#e5697a',
-  Product: '#c07be0',
+  Executive: '#8a97ab',
+  Technology: '#635bff',
+  Commercial: '#4f8bff',
+  Operations: '#12a76a',
+  Finance: '#ef8a10',
+  People: '#e5484d',
+  Product: '#a06bff',
 };
 
 function hexToRgb(h: string): [number, number, number] {
@@ -59,7 +59,7 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
         return (n.division && DIV_COLOURS[n.division]) || '#8ea0c0';
       }
       const t = Math.min(1, n.span / 8);
-      return mix('#33507a', accentOf(), t);
+      return mix('#aab6cf', accentOf(), t);
     },
     [accentOf],
   );

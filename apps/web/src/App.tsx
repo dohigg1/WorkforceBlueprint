@@ -8,17 +8,41 @@ import { Inspector } from './components/Inspector.tsx';
 import { MeasuresView } from './components/MeasuresView.tsx';
 import { ScenarioView } from './components/ScenarioView.tsx';
 import { IngestionView } from './components/IngestionView.tsx';
+import { Overview } from './components/Overview.tsx';
 
-type Tab = 'structure' | 'measures' | 'scenario' | 'ingestion';
+type Tab = 'overview' | 'structure' | 'measures' | 'scenario' | 'ingestion';
 
-const TABS: { id: Tab; k: string; label: string }[] = [
-  { id: 'structure', k: '01', label: 'Org chart' },
-  { id: 'measures', k: '02', label: 'Measures' },
-  { id: 'scenario', k: '03', label: 'Scenario' },
-  { id: 'ingestion', k: '04', label: 'Ingestion' },
+// Compact inline icons. The main organisation chart is canvas, never SVG; these
+// are interface chrome, where vector marks are the right tool.
+function Icon({ d }: { d: string }): JSX.Element {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+const ICONS: Record<Tab, string> = {
+  overview: 'M4 13h6V4H4v9Zm0 7h6v-5H4v5Zm10 0h6V11h-6v9Zm0-16v5h6V4h-6Z',
+  structure: 'M9 3h6v4H9V3ZM3 17h6v4H3v-4Zm12 0h6v4h-6v-4ZM12 7v4M6 17v-3a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3',
+  measures: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
+  scenario: 'M6 3v12a3 3 0 0 0 3 3h6M6 3a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm12 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 0V9a2 2 0 0 0-2-2h-4',
+  ingestion: 'M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2',
+};
+
+const TABS: { id: Tab; label: string; group: 'main' | 'analyse' }[] = [
+  { id: 'overview', label: 'Overview', group: 'main' },
+  { id: 'structure', label: 'Org chart', group: 'main' },
+  { id: 'measures', label: 'Measures', group: 'analyse' },
+  { id: 'scenario', label: 'Scenarios', group: 'analyse' },
+  { id: 'ingestion', label: 'Ingestion', group: 'analyse' },
 ];
 
 const HEADERS: Record<Tab, [string, string, string]> = {
+  overview: [
+    'Workspace',
+    'Overview',
+    'The size, cost and shape of the organisation at a glance, every figure read live from the one measure engine.',
+  ],
   structure: [
     'Position hierarchy',
     'Org chart',
@@ -49,8 +73,8 @@ function LoginGate({ onDone }: { onDone: () => void }): JSX.Element {
         <div className="mark">WB</div>
         <h1>Workforce Blueprint</h1>
         <p>
-          A validated, costed, navigable organisation from a messy spreadsheet. Enter the seeded
-          demo workspace to explore the live engines.
+          A validated, costed, navigable organisation from a messy spreadsheet, in under an hour and
+          without a consultant. Enter the seeded demo workspace to explore the live engines.
         </p>
         <button className="btn" disabled={login.isPending} onClick={() => login.mutate()}>
           {login.isPending ? 'Entering…' : 'Enter demo workspace'}
@@ -60,6 +84,11 @@ function LoginGate({ onDone }: { onDone: () => void }): JSX.Element {
             {(login.error as Error).message}
           </div>
         )}
+        <div className="trust">
+          <span><i />Row-level security</span>
+          <span><i />Effective dated</span>
+          <span><i />Synthetic data</span>
+        </div>
       </div>
     </div>
   );
@@ -67,7 +96,7 @@ function LoginGate({ onDone }: { onDone: () => void }): JSX.Element {
 
 export function App(): JSX.Element {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>('structure');
+  const [tab, setTab] = useState<Tab>('overview');
   const [scenarioId, setScenarioId] = useState<string>(BASELINE);
   const [selected, setSelected] = useState<TreeNode | null>(null);
   const [colourMode, setColourMode] = useState<ColourMode>('division');
@@ -112,6 +141,11 @@ export function App(): JSX.Element {
     setTheme(next);
   }
 
+  function go(t: Tab): void {
+    setTab(t);
+    if (t === 'structure') setFitToken((n) => n + 1);
+  }
+
   if (me.isLoading) return <div className="loading">Checking session…</div>;
   if (!authed) {
     return <LoginGate onDone={() => qc.invalidateQueries({ queryKey: ['me'] })} />;
@@ -120,6 +154,9 @@ export function App(): JSX.Element {
   const [eyebrow, title, sub] = HEADERS[tab];
   const nodes = tree.data?.nodes ?? [];
 
+  const mainTabs = TABS.filter((t) => t.group === 'main');
+  const analyseTabs = TABS.filter((t) => t.group === 'analyse');
+
   return (
     <div id="app">
       <aside className="rail">
@@ -127,75 +164,90 @@ export function App(): JSX.Element {
           <div className="mark">WB</div>
           <div>
             <h1>Workforce Blueprint</h1>
-            <p>organisation design</p>
+            <p>Organisation design</p>
           </div>
         </div>
         <nav className="nav">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              aria-current={tab === t.id ? 'true' : 'false'}
-              onClick={() => {
-                setTab(t.id);
-                if (t.id === 'structure') setFitToken((n) => n + 1);
-              }}
-            >
-              <span className="k">{t.k}</span>
+          {mainTabs.map((t) => (
+            <button key={t.id} aria-current={tab === t.id ? 'true' : 'false'} onClick={() => go(t.id)}>
+              <Icon d={ICONS[t.id]} />
+              {t.label}
+            </button>
+          ))}
+          <div className="nav-label">Analyse</div>
+          {analyseTabs.map((t) => (
+            <button key={t.id} aria-current={tab === t.id ? 'true' : 'false'} onClick={() => go(t.id)}>
+              <Icon d={ICONS[t.id]} />
               {t.label}
             </button>
           ))}
         </nav>
         <div className="ctx">
-          <div className="row">
-            <span className="lbl">Scenario</span>
+          <div className="ctx-card">
+            <div className="row">
+              <span className="lbl">Workspace</span>
+              <span className="val">demo</span>
+            </div>
+            <div className="row">
+              <span className="lbl">Role</span>
+              <span className="val badge">{me.data?.role ?? '—'}</span>
+            </div>
+            <div className="row">
+              <span className="lbl">As at</span>
+              <span className="val">today</span>
+            </div>
           </div>
-          <select
-            value={scenarioId}
-            onChange={(e) => {
-              setScenarioId(e.target.value);
-              qc.invalidateQueries({ queryKey: ['tree', e.target.value] });
-            }}
-          >
-            <option value={BASELINE}>Baseline</option>
-            {(scenarios.data ?? []).map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-          <div className="row">
-            <span className="lbl">Workspace</span>
-            <span className="val">demo</span>
+          <div className="rail-actions">
+            <button className="themebtn" onClick={toggleTheme}>
+              {theme === 'light' ? '☾ Dark' : theme === 'dark' ? '☀ Light' : '◐ Theme'}
+            </button>
+            <button
+              className="railbtn"
+              onClick={async () => {
+                await api.logout();
+                qc.invalidateQueries({ queryKey: ['me'] });
+              }}
+            >
+              Sign out
+            </button>
           </div>
-          <div className="row">
-            <span className="lbl">Role</span>
-            <span className="val">{me.data?.role ?? '—'}</span>
-          </div>
-          <div className="row">
-            <span className="lbl">As at</span>
-            <span className="val">today</span>
-          </div>
-          <button className="themebtn" onClick={toggleTheme}>
-            ◐ Toggle theme {theme ? `(${theme})` : ''}
-          </button>
-          <button
-            className="railbtn"
-            onClick={async () => {
-              await api.logout();
-              qc.invalidateQueries({ queryKey: ['me'] });
-            }}
-          >
-            Sign out
-          </button>
         </div>
       </aside>
 
       <main className="main">
+        <div className="topbar">
+          <div className="crumb">
+            Workforce Blueprint <span style={{ color: 'var(--faint)', margin: '0 6px' }}>/</span> <b>{title}</b>
+          </div>
+          <div className="spacer" />
+          <div className="scenario-picker">
+            <span className="tag-live">Reading</span>
+            <select
+              value={scenarioId}
+              onChange={(e) => {
+                setScenarioId(e.target.value);
+                qc.invalidateQueries({ queryKey: ['tree', e.target.value] });
+              }}
+            >
+              <option value={BASELINE}>Baseline</option>
+              {(scenarios.data ?? []).map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
         <div className="head">
           <div className="eyebrow">{eyebrow}</div>
           <h2>{title}</h2>
           <p>{sub}</p>
         </div>
+
+        {tab === 'overview' && (
+          <Overview scenarioId={scenarioId} scenarios={scenarios.data ?? []} onNavigate={go} />
+        )}
 
         {tab === 'structure' && (
           <div className="view">
@@ -208,21 +260,18 @@ export function App(): JSX.Element {
                 <div className="canvas-shell">
                   <div className="toolbar">
                     <div className="grp">
-                      <button
-                        aria-pressed={colourMode === 'division'}
-                        onClick={() => setColourMode('division')}
-                      >
-                        Colour: division
+                      <button aria-pressed={colourMode === 'division'} onClick={() => setColourMode('division')}>
+                        Division
                       </button>
                       <button aria-pressed={colourMode === 'span'} onClick={() => setColourMode('span')}>
-                        Colour: span
+                        Span
                       </button>
                     </div>
-                    <button className="grp" style={{ cursor: 'pointer' }} onClick={() => setFitToken((n) => n + 1)}>
-                      Fit
+                    <button className="fitbtn" style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 'var(--radius-sm)', color: 'var(--muted)', font: '600 11.5px var(--sans)' }} onClick={() => setFitToken((n) => n + 1)}>
+                      Fit to view
                     </button>
                     <span className="hint">
-                      {tree.data.nodes.length} positions{tree.data.truncated ? ' (truncated)' : ''} · drag to pan · scroll to zoom · click to select
+                      {tree.data.nodes.length} positions{tree.data.truncated ? ' (truncated)' : ''} · drag to pan · scroll to zoom
                     </span>
                   </div>
                   <OrgChart
