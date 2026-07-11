@@ -35,7 +35,10 @@
     "@wfb/measures": "workspace:*",
     "@wfb/costing": "workspace:*",
     "@wfb/ingestion": "workspace:*",
-    "@wfb/api": "workspace:*"
+    "@wfb/api": "workspace:*",
+    "@wfb/web": "workspace:*",
+    "@wfb/ai": "workspace:*",
+    "@wfb/render": "workspace:*"
   },
   "dependencies": {
     "pg": "^8.13.1"

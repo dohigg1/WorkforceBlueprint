@@ -27,6 +27,12 @@
     },
     {
       "path": "apps/api"
+    },
+    {
+      "path": "packages/ai"
+    },
+    {
+      "path": "packages/render"
     }
   ]
 }
