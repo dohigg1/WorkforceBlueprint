@@ -64,10 +64,15 @@ const wfb = {
         if (!inDomain) return {};
         if (file.endsWith('supersession.ts')) return {};
         if (/\/(test|tests)\//.test(file) || file.endsWith('.test.ts')) return {};
+        // Target the effective-dated ENTITY tables specifically. Updating the
+        // overlay store (scenario_deltas), the closure, or the audit log is
+        // legitimate and not a destructive entity mutation.
+        const ENTITY = 'positions|people|occupancies|reporting_lines|locations|cost_centres|org_units|job_families|jobs|roles|skills|activities';
+        const entityUpdate = new RegExp(`\\bUPDATE\\s+"?(${ENTITY})"?\\b`, 'i');
         function check(node) {
           const text = sqlText(node);
           if (!text) return;
-          if (/\bUPDATE\s+[a-z_"]/i.test(text)) {
+          if (entityUpdate.test(text)) {
             context.report({ node, message: 'INV-4: no raw UPDATE on an entity table. Use the supersession helper.' });
           }
         }
