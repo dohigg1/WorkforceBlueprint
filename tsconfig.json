@@ -1,6 +1,7 @@
 {
   "files": [],
   "references": [
-    { "path": "packages/tenancy" }
+    { "path": "packages/tenancy" },
+    { "path": "packages/data-model" }
   ]
 }

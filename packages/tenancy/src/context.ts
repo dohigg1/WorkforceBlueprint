@@ -71,7 +71,9 @@ export async function runInTenant<T>(
               set_config('app.as_at', $4, true)`,
       [ctx.tenantId, ctx.workspaceId, ctx.userId ?? '', ctx.asAt],
     );
-    const result = await fn(client);
+    // Bind the async-local context too, so helpers that default to
+    // requireContext() resolve inside the unit of work.
+    const result = await withTenantContext(ctx, () => fn(client));
     await client.query('COMMIT');
     return result;
   } catch (err) {
