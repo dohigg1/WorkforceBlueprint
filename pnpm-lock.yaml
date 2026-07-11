@@ -27,6 +27,9 @@ importers:
       '@wfb/audit':
         specifier: workspace:*
         version: link:packages/audit
+      '@wfb/costing':
+        specifier: workspace:*
+        version: link:packages/costing
       '@wfb/data-model':
         specifier: workspace:*
         version: link:packages/data-model
@@ -68,6 +71,22 @@ importers:
         specifier: ^8.11.10
         version: 8.20.0
 
+  packages/costing:
+    dependencies:
+      '@wfb/data-model':
+        specifier: workspace:*
+        version: link:../data-model
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
   packages/data-model:
     dependencies:
       '@wfb/tenancy':
@@ -96,6 +115,8 @@ importers:
       '@types/pg':
         specifier: ^8.11.10
         version: 8.20.0
+
+  packages/ingestion: {}
 
   packages/measures:
     dependencies:

@@ -13,10 +13,22 @@ export type ScopeType = 'node' | 'subtree' | 'org_unit' | 'organisation';
 export interface ScalarMeasure {
   key: string;
   title: string;
-  unit: 'count' | 'fte' | 'ratio' | 'layers';
+  unit: 'count' | 'fte' | 'ratio' | 'layers' | 'currency';
   /** Aggregate SQL projecting a single `value`, over `scope_ids`. */
   valueSql: string;
 }
+
+// The fully-loaded cost of one position, in the reporting currency: the base
+// (converted, vacancy-adjusted) times one plus the on-cost, benefits, bonus and
+// overhead fractions. Reused by the cost measures so the build-up is defined
+// once. Reads the per-position projection from packages/costing.
+const LOADED_COST = `
+  pb.base_reporting * (CASE WHEN pb.is_vacant THEN cc.vacant_factor ELSE 1 END)
+    * (1 + cc.oncost_pct + cc.benefits_pct + cc.bonus_pct + cc.overhead_pct)`;
+const COST_FROM = `
+  FROM scope_ids s
+  JOIN wfb_position_base($1, $2::timestamptz) pb ON pb.external_id = s.external_id
+  CROSS JOIN cost_config cc`;
 
 // A per-node span sub-expression reused by several aggregate measures.
 const SPAN_SUBQUERY = `(
@@ -92,6 +104,27 @@ export const SCALAR_MEASURES: Record<string, ScalarMeasure> = {
       FROM position_closure c
       JOIN scope_ids s ON s.external_id = c.descendant_external_id
       WHERE c.scenario_id = $1`,
+  },
+  cost: {
+    key: 'cost',
+    title: 'Fully loaded cost',
+    unit: 'currency',
+    valueSql: `SELECT coalesce(sum(${LOADED_COST}), 0)::float8 AS value ${COST_FROM}`,
+  },
+  base_cost: {
+    key: 'base_cost',
+    title: 'Base cost',
+    unit: 'currency',
+    valueSql: `
+      SELECT coalesce(sum(
+        pb.base_reporting * (CASE WHEN pb.is_vacant THEN cc.vacant_factor ELSE 1 END)
+      ), 0)::float8 AS value ${COST_FROM}`,
+  },
+  cost_per_head: {
+    key: 'cost_per_head',
+    title: 'Cost per head',
+    unit: 'currency',
+    valueSql: `SELECT (coalesce(sum(${LOADED_COST}), 0) / NULLIF(count(*), 0))::float8 AS value ${COST_FROM}`,
   },
 };
 
