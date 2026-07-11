@@ -16,6 +16,16 @@ import {
   type ScopeType,
 } from '@wfb/measures';
 import { decomposeCost } from '@wfb/costing';
+import { Readable } from 'node:stream';
+import {
+  parseCsvStream,
+  proposeMapping,
+  validate,
+  type CanonicalRow,
+  type TargetField,
+  type MappingProposal,
+  type ValidationReport,
+} from '@wfb/ingestion';
 
 export interface TreeNode {
   id: string;
@@ -168,6 +178,58 @@ export class ApiService {
       decomposeCost(client, externalId, { scenarioId: scenarioId ?? BASELINE_SCENARIO }, ctx),
     );
   }
+
+  /**
+   * Analyse an uploaded extract: parse headers and a sample, propose a canonical
+   * mapping with confidence and explanation, apply it and run advisory
+   * validation. Pure and stateless; the loading step is separate.
+   */
+  async analyzeCsv(
+    csv: string,
+  ): Promise<{
+    headers: string[];
+    sampleRows: string[][];
+    mapping: MappingProposal[];
+    validation: ValidationReport;
+  }> {
+    const rows: string[][] = [];
+    await parseCsvStream(Readable.from([csv]), (row) => {
+      if (rows.length < 400) rows.push(row);
+    });
+    const headers = rows[0] ?? [];
+    const dataRows = rows.slice(1);
+    const sample: Record<string, string[]> = {};
+    headers.forEach((h, i) => {
+      sample[h] = dataRows.slice(0, 20).map((r) => r[i] ?? '');
+    });
+    const mapping = proposeMapping(headers, sample);
+
+    const canonical: CanonicalRow[] = dataRows.map((r, idx) => {
+      const rec: Record<string, unknown> = {};
+      mapping.forEach((m, i) => {
+        if (!m.targetField) return;
+        const raw = r[i] ?? '';
+        rec[m.targetField] = coerce(m.targetField, raw);
+      });
+      if (rec['external_id'] == null || rec['external_id'] === '') rec['external_id'] = `ROW-${idx + 1}`;
+      return rec as unknown as CanonicalRow;
+    });
+
+    return { headers, sampleRows: dataRows.slice(0, 100), mapping, validation: validate(canonical) };
+  }
+}
+
+function coerce(field: TargetField, raw: string): unknown {
+  if (field === 'fte') {
+    const cleaned = raw.replace('%', '').trim();
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? (raw.includes('%') ? n / 100 : n) : null;
+  }
+  if (field === 'base_salary') {
+    const n = Number(raw.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : null;
+  }
+  return raw;
 }
 
 // Server-side tidy-tree layout (the architecture precomputes layout server side).

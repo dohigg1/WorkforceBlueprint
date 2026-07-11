@@ -80,4 +80,11 @@ export class ApiController {
   decompose(@Req() req: AuthedRequest, @Param('id') id: string, @Query('scenario') scenario?: string) {
     return this.svc.decompose(contextOf(req), id, scenario);
   }
+
+  @Post('ingest/analyze')
+  ingest(@Req() req: AuthedRequest, @Body() body: { csv: string }) {
+    const ctx = contextOf(req);
+    assertCapability(ctx.role, 'data:ingest');
+    return this.svc.analyzeCsv(body.csv ?? '');
+  }
 }

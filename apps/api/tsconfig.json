@@ -10,12 +10,29 @@
     "noUncheckedIndexedAccess": false
   },
   "references": [
-    { "path": "../../packages/tenancy" },
-    { "path": "../../packages/data-model" },
-    { "path": "../../packages/hierarchy" },
-    { "path": "../../packages/scenarios" },
-    { "path": "../../packages/measures" },
-    { "path": "../../packages/costing" }
+    {
+      "path": "../../packages/tenancy"
+    },
+    {
+      "path": "../../packages/data-model"
+    },
+    {
+      "path": "../../packages/hierarchy"
+    },
+    {
+      "path": "../../packages/scenarios"
+    },
+    {
+      "path": "../../packages/measures"
+    },
+    {
+      "path": "../../packages/costing"
+    },
+    {
+      "path": "../../packages/ingestion"
+    }
   ],
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ]
 }

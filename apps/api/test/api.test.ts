@@ -56,3 +56,23 @@ describe('api service tenant isolation', () => {
     expect(measuresA.headcount).toBe(1);
   });
 });
+
+describe('ingestion analysis endpoint', () => {
+  it('maps awkward headers and flags defects', async () => {
+    const csv = [
+      'Position ID,Position Title (Local),Emp Grp,MGR_PERNR,Cost Ctr,FTE%,Annual Base Sal (GBP)',
+      'P100,Head of Sales,Active,P001,CC-01,100,95000',
+      'P101,Sales Rep,Active,P100,CC-01,80,42000',
+      'P102,Sales Rep,Active,P999,,0,-5',
+    ].join('\n');
+    const r = await svc.analyzeCsv(csv);
+    const byField = new Map(r.mapping.map((m) => [m.sourceColumn, m.targetField]));
+    expect(byField.get('MGR_PERNR')).toBe('manager_external_id');
+    expect(byField.get('Cost Ctr')).toBe('cost_centre_external_id');
+    expect(byField.get('FTE%')).toBe('fte');
+    expect(byField.get('Annual Base Sal (GBP)')).toBe('base_salary');
+    expect(r.validation.countsByCode.orphan_manager).toBeGreaterThan(0);
+    expect(r.validation.countsByCode.non_positive_fte).toBeGreaterThan(0);
+    expect(r.validation.score).toBeLessThan(100);
+  });
+});

@@ -84,6 +84,9 @@ importers:
       '@wfb/hierarchy':
         specifier: workspace:*
         version: link:../../packages/hierarchy
+      '@wfb/ingestion':
+        specifier: workspace:*
+        version: link:../../packages/ingestion
       '@wfb/measures':
         specifier: workspace:*
         version: link:../../packages/measures
