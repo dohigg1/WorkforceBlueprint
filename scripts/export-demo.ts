@@ -29,6 +29,11 @@ import {
   rebuildScenarioClosure,
 } from '@wfb/scenarios';
 import { evaluate, evaluatePerNode, type Scope } from '@wfb/measures';
+import { setCostConfig, setGradeMidpoint } from '@wfb/costing';
+
+const SALARY_BY_GRADE: Record<string, number> = {
+  G1: 240000, G2: 150000, G3: 98000, G4: 72000, G5: 52000,
+};
 
 // Deterministic PRNG so the demo is stable across runs.
 function mulberry32(seed: number): () => number {
@@ -156,6 +161,15 @@ async function main(): Promise<void> {
     [tenantId],
   );
   const workspaceId = wRows[0]!.id;
+  // An owner membership so the dev login can resolve a session for this workspace.
+  const { rows: uRows } = await admin.query<{ id: string }>(
+    "INSERT INTO users(tenant_id, email, display_name) VALUES ($1, 'owner@demo.example', 'Demo Owner') RETURNING id",
+    [tenantId],
+  );
+  await admin.query(
+    "INSERT INTO memberships(tenant_id, workspace_id, user_id, role) VALUES ($1, $2, $3, 'owner')",
+    [tenantId, workspaceId, uRows[0]!.id],
+  );
   const ctx: TenantContext = { tenantId, workspaceId, userId: null, role: 'owner', asAt: today() };
 
   const nodes = buildOrg();
@@ -170,6 +184,8 @@ async function main(): Promise<void> {
         title: n.title,
         grade: n.grade,
         fte: n.fte,
+        base_salary: Math.round((SALARY_BY_GRADE[n.grade] ?? 50000) * (0.9 + rnd() * 0.2)),
+        salary_currency: 'GBP',
         valid_from: EFF,
         custom: { division: n.division },
       });
@@ -195,6 +211,14 @@ async function main(): Promise<void> {
         });
       }
     }
+    // Cost configuration so the cost measures produce real numbers.
+    await setCostConfig(client, {
+      oncostPct: 0.2, benefitsPct: 0.1, bonusPct: 0.08, overheadPct: 0.15,
+      vacantFactor: 1.0, reportingCurrency: 'GBP',
+    });
+    for (const [grade, midpoint] of Object.entries(SALARY_BY_GRADE)) {
+      await setGradeMidpoint(client, grade, 'GBP', midpoint);
+    }
     await rebuildClosure(client);
 
     // Demonstrate write-time cycle detection: try to make the CEO report to a leaf.
@@ -218,6 +242,8 @@ async function main(): Promise<void> {
     averageSpan: await evaluate(client, 'average_span', org, M),
     managementRatio: await evaluate(client, 'management_ratio', org, M),
     layers: await evaluate(client, 'layers', org, M),
+    cost: await evaluate(client, 'cost', org, M),
+    costPerHead: await evaluate(client, 'cost_per_head', org, M),
   }));
 
   const [spanMap, depthMap, descMap] = await runInTenant(ctx, async (client) => [

@@ -21,6 +21,12 @@
     },
     {
       "path": "packages/costing"
+    },
+    {
+      "path": "packages/ingestion"
+    },
+    {
+      "path": "apps/api"
     }
   ]
 }

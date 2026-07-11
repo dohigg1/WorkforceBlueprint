@@ -33,7 +33,9 @@
     "@wfb/hierarchy": "workspace:*",
     "@wfb/scenarios": "workspace:*",
     "@wfb/measures": "workspace:*",
-    "@wfb/costing": "workspace:*"
+    "@wfb/costing": "workspace:*",
+    "@wfb/ingestion": "workspace:*",
+    "@wfb/api": "workspace:*"
   },
   "dependencies": {
     "pg": "^8.13.1"

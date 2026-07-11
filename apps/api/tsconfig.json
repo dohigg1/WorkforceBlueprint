@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noUnusedParameters": false,
+    "noUncheckedIndexedAccess": false
+  },
+  "references": [
+    { "path": "../../packages/tenancy" },
+    { "path": "../../packages/data-model" },
+    { "path": "../../packages/hierarchy" },
+    { "path": "../../packages/scenarios" },
+    { "path": "../../packages/measures" },
+    { "path": "../../packages/costing" }
+  ],
+  "include": ["src/**/*"]
+}
