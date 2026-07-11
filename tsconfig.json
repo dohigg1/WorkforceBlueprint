@@ -48,6 +48,9 @@
     },
     {
       "path": "packages/connectors"
+    },
+    {
+      "path": "packages/intelligence"
     }
   ]
 }

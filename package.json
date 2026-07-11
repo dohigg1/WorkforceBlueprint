@@ -43,7 +43,8 @@
     "@wfb/planning": "workspace:*",
     "@wfb/partner": "workspace:*",
     "@wfb/compliance": "workspace:*",
-    "@wfb/connectors": "workspace:*"
+    "@wfb/connectors": "workspace:*",
+    "@wfb/intelligence": "workspace:*"
   },
   "dependencies": {
     "pg": "^8.13.1"
