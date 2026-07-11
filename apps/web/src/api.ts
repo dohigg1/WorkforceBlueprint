@@ -24,6 +24,9 @@ export interface TreeNode {
   descendants: number;
   x: number;
   y: number;
+  // Per-node fully loaded cost, present when the reader is permitted to see it
+  // (the static demo is an owner). Absent in live reads that do not project it.
+  cost?: number | null;
 }
 
 export interface TreeResponse {
