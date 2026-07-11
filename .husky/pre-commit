@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Pre-commit: scan the staged change for anything resembling real personal data
+# before it can enter the history. INV-11.
+bash "$(git rev-parse --show-toplevel)/scripts/pii-scan.sh"
