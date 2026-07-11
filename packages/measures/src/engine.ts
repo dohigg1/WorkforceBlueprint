@@ -56,6 +56,15 @@ function scopeSql(scope: Scope, params: unknown[]): string {
       params.push(requireAnchor(scope));
       return `SELECT external_id FROM wfb_resolve_entity($1, 'positions', $2::timestamptz)
               WHERE doc->>'org_unit_external_id' = $3`;
+    case 'role':
+      params.push(requireAnchor(scope));
+      // Positions belonging to a role, as-at the date. Role membership is a
+      // first-class effective-dated relationship (E11).
+      return `SELECT position_external_id AS external_id FROM role_positions
+              WHERE role_external_id = $3
+                AND valid_from <= $2::timestamptz
+                AND (valid_to IS NULL OR valid_to > $2::timestamptz)
+                AND $1::uuid IS NOT NULL`;
     default: {
       const exhaustive: never = scope.type;
       throw new Error(`Unknown scope type: ${String(exhaustive)}`);

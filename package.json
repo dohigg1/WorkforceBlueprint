@@ -38,7 +38,8 @@
     "@wfb/api": "workspace:*",
     "@wfb/web": "workspace:*",
     "@wfb/ai": "workspace:*",
-    "@wfb/render": "workspace:*"
+    "@wfb/render": "workspace:*",
+    "@wfb/skills": "workspace:*"
   },
   "dependencies": {
     "pg": "^8.13.1"

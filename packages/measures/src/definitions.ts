@@ -8,7 +8,7 @@
  * prepends. Each scalar fragment must project a single column named `value`.
  */
 
-export type ScopeType = 'node' | 'subtree' | 'org_unit' | 'organisation';
+export type ScopeType = 'node' | 'subtree' | 'org_unit' | 'organisation' | 'role';
 
 export interface ScalarMeasure {
   key: string;
