@@ -38,6 +38,8 @@ export interface ExceptionRow {
 export interface BoardPackModel {
   workspaceName: string;
   asAt: string;
+  /** Optional watermark stamped on every page, for sensitive packs (E13). */
+  watermark?: string;
   structure: StructureSummary;
   cost: CostSummary;
   divisions: DivisionRow[];

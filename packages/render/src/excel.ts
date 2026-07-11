@@ -16,6 +16,10 @@ export async function buildWorkbook(model: BoardPackModel): Promise<Buffer> {
   summary.addRow([model.workspaceName]);
   summary.getCell('A1').font = { bold: true, size: 16 };
   summary.addRow([`As at ${model.asAt}`]);
+  if (model.watermark) {
+    const wm = summary.addRow([model.watermark]);
+    wm.getCell(1).font = { italic: true, color: { argb: 'FFC0392B' } };
+  }
   summary.addRow([]);
   summary.addRow(['Structure', '']).getCell(1).font = { bold: true };
   summary.addRow(['Headcount', model.structure.headcount]);

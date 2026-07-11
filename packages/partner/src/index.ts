@@ -1,0 +1,15 @@
+export {
+  type TemplateKind,
+  type WorkspaceBranding,
+  type TemplateDefinition,
+  type PartnerTemplate,
+  type ProvisionResult,
+  type ExportManifest,
+  provisionClientWorkspace,
+  saveTemplate,
+  listTemplates,
+  instantiateTemplates,
+  archiveWorkspace,
+  exportWorkspace,
+  destroyWorkspace,
+} from './console.js';

@@ -78,6 +78,15 @@ export async function buildDeck(model: BoardPackModel): Promise<Buffer> {
     { x: 0.5, y: 1.0, w: 6, border: { pt: 0.5, color: 'CCCCCC' }, fontSize: 14 },
   );
 
+  // Watermark every slide, for sensitive packs (severance and selection).
+  if (model.watermark) {
+    for (const slide of (pptx as unknown as { slides: unknown[] }).slides) {
+      (slide as { addText: (t: string, o: Record<string, unknown>) => void }).addText(model.watermark, {
+        x: 0.5, y: 6.9, w: 9, h: 0.4, fontSize: 10, color: 'C0392B', align: 'center', italic: true,
+      });
+    }
+  }
+
   const out = (await pptx.write({ outputType: 'nodebuffer' })) as Buffer;
   return Buffer.from(out);
 }

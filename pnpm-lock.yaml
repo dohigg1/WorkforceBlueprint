@@ -33,6 +33,12 @@ importers:
       '@wfb/audit':
         specifier: workspace:*
         version: link:packages/audit
+      '@wfb/compliance':
+        specifier: workspace:*
+        version: link:packages/compliance
+      '@wfb/connectors':
+        specifier: workspace:*
+        version: link:packages/connectors
       '@wfb/costing':
         specifier: workspace:*
         version: link:packages/costing
@@ -48,6 +54,9 @@ importers:
       '@wfb/measures':
         specifier: workspace:*
         version: link:packages/measures
+      '@wfb/partner':
+        specifier: workspace:*
+        version: link:packages/partner
       '@wfb/planning':
         specifier: workspace:*
         version: link:packages/planning
@@ -177,6 +186,38 @@ importers:
         specifier: ^8.11.10
         version: 8.20.0
 
+  packages/compliance:
+    dependencies:
+      '@wfb/data-model':
+        specifier: workspace:*
+        version: link:../data-model
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
+  packages/connectors:
+    dependencies:
+      '@wfb/ingestion':
+        specifier: workspace:*
+        version: link:../ingestion
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
   packages/costing:
     dependencies:
       '@wfb/data-model':
@@ -229,6 +270,19 @@ importers:
       '@wfb/hierarchy':
         specifier: workspace:*
         version: link:../hierarchy
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
+  packages/partner:
+    dependencies:
       '@wfb/tenancy':
         specifier: workspace:*
         version: link:../tenancy

@@ -39,6 +39,15 @@
     },
     {
       "path": "packages/planning"
+    },
+    {
+      "path": "packages/partner"
+    },
+    {
+      "path": "packages/compliance"
+    },
+    {
+      "path": "packages/connectors"
     }
   ]
 }

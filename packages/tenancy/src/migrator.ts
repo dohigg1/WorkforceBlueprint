@@ -116,6 +116,9 @@ export function defaultMigrationDirs(repoRoot: string): string[] {
     'costing',
     'planning',
     'skills',
+    'partner',
+    'connectors',
+    'compliance',
   ];
   return packages.map((p) => join(repoRoot, 'packages', p, 'migrations'));
 }
