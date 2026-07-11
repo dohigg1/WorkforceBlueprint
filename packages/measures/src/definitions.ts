@@ -36,10 +36,10 @@ export const SCALAR_MEASURES: Record<string, ScalarMeasure> = {
     title: 'Full-time equivalent',
     unit: 'fte',
     valueSql: `
-      SELECT coalesce(sum((rp.doc->>'fte')::numeric), 0)::float8 AS value
+      SELECT coalesce(sum(ep.fte), 0)::float8 AS value
       FROM scope_ids s
-      JOIN wfb_resolve_entity($1, 'positions', $2::timestamptz) rp
-        ON rp.external_id = s.external_id`,
+      JOIN wfb_effective_positions($1, $2::timestamptz) ep
+        ON ep.external_id = s.external_id`,
   },
   vacancies: {
     key: 'vacancies',

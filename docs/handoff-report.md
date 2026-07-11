@@ -61,9 +61,15 @@ overlay primitive (E07-01), and the measure engine (Sprint 6).
 
 | Operation | Target | Measured |
 |---|---|---|
-| Descendant subtree query at 100k | under 100 ms | see verify run |
-| Ancestor query at 100k | under 100 ms | see verify run |
-| Measure recompute after edit | under 2 s | see verify run |
+| Descendant subtree query at 100k | under 100 ms | 23.5 ms |
+| Ancestor query at 100k | under 100 ms | 0.3 ms |
+| Measure recompute after edit | under 2 s | 0.6 s |
+| Full closure rebuild at 100k (maintenance, not a read target) | none | ~17 to 30 s |
+| Synthetic seed of 100k positions | none | ~16 s |
+
+All read targets are met with margin. The full closure rebuild is a maintenance
+operation, not a measured read target; the materialised closure serves the reads
+that are measured.
 
 ## What was NOT built (explicit)
 
