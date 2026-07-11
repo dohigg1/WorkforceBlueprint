@@ -48,6 +48,9 @@ importers:
       '@wfb/measures':
         specifier: workspace:*
         version: link:packages/measures
+      '@wfb/planning':
+        specifier: workspace:*
+        version: link:packages/planning
       '@wfb/render':
         specifier: workspace:*
         version: link:packages/render
@@ -226,6 +229,28 @@ importers:
       '@wfb/hierarchy':
         specifier: workspace:*
         version: link:../hierarchy
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
+  packages/planning:
+    dependencies:
+      '@wfb/hierarchy':
+        specifier: workspace:*
+        version: link:../hierarchy
+      '@wfb/measures':
+        specifier: workspace:*
+        version: link:../measures
+      '@wfb/scenarios':
+        specifier: workspace:*
+        version: link:../scenarios
       '@wfb/tenancy':
         specifier: workspace:*
         version: link:../tenancy

@@ -21,7 +21,6 @@ export const TEMPORAL_TABLES = [
   'role_positions',
   'position_skills',
   'person_skills',
-  'demand_targets',
 ] as const;
 
 export type TemporalTable = (typeof TEMPORAL_TABLES)[number];
