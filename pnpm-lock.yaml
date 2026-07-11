@@ -33,6 +33,9 @@ importers:
       '@wfb/hierarchy':
         specifier: workspace:*
         version: link:packages/hierarchy
+      '@wfb/measures':
+        specifier: workspace:*
+        version: link:packages/measures
       '@wfb/scenarios':
         specifier: workspace:*
         version: link:packages/scenarios
@@ -83,6 +86,22 @@ importers:
       '@wfb/data-model':
         specifier: workspace:*
         version: link:../data-model
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
+  packages/measures:
+    dependencies:
+      '@wfb/hierarchy':
+        specifier: workspace:*
+        version: link:../hierarchy
       '@wfb/tenancy':
         specifier: workspace:*
         version: link:../tenancy
