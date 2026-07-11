@@ -1,3 +1,30 @@
+# Handoff report
+
+## Release 1 status (current)
+
+The full Release 1 surface is built and verified against a live PostgreSQL 16
+database: tenancy, canonical model, hierarchy, audit, scenario overlay, measure
+engine, cost model, ingestion, a NestJS API, a React web application with the
+editing surface, a semantic tool layer (natural language), and board-pack export.
+`scripts/verify.sh` is green: 98 tests plus 3 performance tests at 100k.
+
+Packages: tenancy, data-model, audit, hierarchy, scenarios, measures, costing,
+ingestion, ai, render. Apps: api (NestJS), web (React + Vite + TanStack Query).
+
+The web application was verified end to end with Playwright: dev login, the
+canvas organisation chart, per-node measures and the transparent cost build-up,
+scenario creation and comparison, the reparenting edit (E07-02) through the
+scenario engine, and the ingestion mapping and validation view, all with zero
+console errors.
+
+Still planned (Release 2 and 3): job and role architecture, skills taxonomy,
+strategic workforce planning, severance and cost-out, the partner console,
+connectors, and enterprise compliance. AI model wiring uses a deterministic
+planner behind the constrained tool schema; a live Anthropic-backed planner
+slots in behind the same validated schema when a key is provided.
+
+---
+
 # Handoff report: foundation build
 
 This build established the load-bearing primitives in dependency order, each
