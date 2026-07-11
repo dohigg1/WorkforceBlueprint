@@ -12,8 +12,12 @@ export async function setup(): Promise<void> {
   execFileSync('bash', [resolve(repoRoot, 'scripts', 'setup-db.sh')], {
     stdio: 'inherit',
   });
-  // Deterministic clean slate so tests never depend on prior runs.
-  await resetPublicSchema();
+  // Deterministic clean slate so tests never depend on prior runs. The
+  // performance suite is the exception: it seeds the 100k dataset before Vitest
+  // starts and must not have it wiped, so the reset is skipped under WFB_PERF.
+  if (process.env.WFB_PERF !== '1') {
+    await resetPublicSchema();
+  }
   const applied = await migrate(defaultMigrationDirs(repoRoot));
   if (applied.length > 0) {
     // eslint-disable-next-line no-console

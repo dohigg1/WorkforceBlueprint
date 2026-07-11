@@ -2,6 +2,8 @@
   "files": [],
   "references": [
     { "path": "packages/tenancy" },
-    { "path": "packages/data-model" }
+    { "path": "packages/data-model" },
+    { "path": "packages/audit" },
+    { "path": "packages/hierarchy" }
   ]
 }

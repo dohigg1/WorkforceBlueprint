@@ -24,9 +24,15 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.19.0
         version: 8.63.0(eslint@9.39.5)(typescript@5.9.3)
+      '@wfb/audit':
+        specifier: workspace:*
+        version: link:packages/audit
       '@wfb/data-model':
         specifier: workspace:*
         version: link:packages/data-model
+      '@wfb/hierarchy':
+        specifier: workspace:*
+        version: link:packages/hierarchy
       '@wfb/tenancy':
         specifier: workspace:*
         version: link:packages/tenancy
@@ -43,8 +49,37 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/audit:
+    dependencies:
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
   packages/data-model:
     dependencies:
+      '@wfb/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      pg:
+        specifier: ^8.13.1
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.11.10
+        version: 8.20.0
+
+  packages/hierarchy:
+    dependencies:
+      '@wfb/data-model':
+        specifier: workspace:*
+        version: link:../data-model
       '@wfb/tenancy':
         specifier: workspace:*
         version: link:../tenancy
