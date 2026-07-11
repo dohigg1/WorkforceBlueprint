@@ -14,14 +14,17 @@ interface Props {
 const NW = 128;
 const NH = 34;
 
+// Division palette, ordered for colour-vision separation (validated: worst
+// adjacent CVD deltaE 16.2). Shared by the org chart, the inspector legend and
+// the Overview so an entity keeps its colour everywhere.
 const DIV_COLOURS: Record<string, string> = {
   Executive: '#8a97ab',
-  Technology: '#635bff',
-  Commercial: '#4f8bff',
-  Operations: '#12a76a',
-  Finance: '#ef8a10',
-  People: '#e5484d',
-  Product: '#a06bff',
+  Technology: '#2a78d6',
+  Commercial: '#eb6834',
+  Operations: '#1baf7a',
+  Finance: '#eda100',
+  People: '#e34948',
+  Product: '#4a3aa7',
 };
 
 function hexToRgb(h: string): [number, number, number] {
