@@ -110,7 +110,7 @@ function scenarioParam(scenarioId: string): string {
   return scenarioId && scenarioId !== BASELINE ? `?scenario=${encodeURIComponent(scenarioId)}` : '';
 }
 
-export const api = {
+const liveApi = {
   me: () => request<Me>('/auth/me'),
   devLogin: () =>
     request<{ tenantId: string; workspaceId: string; role: string }>('/auth/dev-login', {
@@ -156,6 +156,51 @@ export const api = {
       body: JSON.stringify({ csv }),
     }),
 };
+
+// Static demo mode. When a baked data bundle is present on the window (used for
+// the shareable single-file build), every call resolves from it and no network
+// request is made. The live application never sets this global.
+interface StaticBundle {
+  me: Me;
+  scenarios: Scenario[];
+  scenarioId: string;
+  baseline: { tree: TreeResponse; measures: Measures };
+  scenario: { tree: TreeResponse; measures: Measures; compare: CompareResponse };
+  decompose: Record<string, CostDecomposition>;
+  analyze: IngestResult;
+  sampleCsv: string;
+}
+
+function staticApi(s: StaticBundle): typeof liveApi {
+  const R = <T>(v: T): Promise<T> => Promise.resolve(v);
+  const isScenario = (id: string): boolean => Boolean(id) && id !== BASELINE;
+  return {
+    me: () => R(s.me),
+    devLogin: () => R({ tenantId: 'demo', workspaceId: 'demo', role: 'owner' }),
+    logout: () => R({ ok: true as const }),
+    tree: (id: string) => R(isScenario(id) ? s.scenario.tree : s.baseline.tree),
+    measures: (id: string) => R(isScenario(id) ? s.scenario.measures : s.baseline.measures),
+    scenarios: () => R(s.scenarios),
+    createScenario: () => R({ id: s.scenarioId }),
+    compare: () => R(s.scenario.compare),
+    decompose: (externalId: string) =>
+      R(s.decompose[externalId] ?? { externalId, currency: 'GBP', base: null, onCosts: null, benefits: null, bonus: null, overhead: null, loaded: null, isVacant: false, masked: true }),
+    reparent: () => R({ ok: true, rebuilt: 0 }),
+    analyze: () => R(s.analyze),
+  };
+}
+
+declare global {
+  interface Window {
+    __WFB_STATIC__?: StaticBundle;
+  }
+}
+
+export const api: typeof liveApi =
+  typeof window !== 'undefined' && window.__WFB_STATIC__ ? staticApi(window.__WFB_STATIC__) : liveApi;
+
+export const STATIC_SAMPLE_CSV: string | undefined =
+  typeof window !== 'undefined' ? window.__WFB_STATIC__?.sampleCsv : undefined;
 
 export const MEASURE_LABELS: Record<string, string> = {
   headcount: 'Headcount',
