@@ -9,7 +9,7 @@ import { MeasuresView } from './components/MeasuresView.tsx';
 import { ScenarioView } from './components/ScenarioView.tsx';
 import { IngestionView } from './components/IngestionView.tsx';
 import { Overview } from './components/Overview.tsx';
-import { Icon, useToasts, ToastHost } from './ui.tsx';
+import { Icon, useToasts, ToastHost, OverflowMenu, effectiveDate } from './ui.tsx';
 
 type Tab = 'overview' | 'structure' | 'measures' | 'scenario' | 'ingestion';
 
@@ -22,7 +22,7 @@ const NAV: { id: Tab; label: string; icon: string; group: 'main' | 'analyse' }[]
 ];
 
 const PAGE: Record<Tab, { title: string; desc: string }> = {
-  overview: { title: 'Overview', desc: 'Size, cost and shape of the organisation, read from the measure engine as at today.' },
+  overview: { title: 'Overview', desc: 'Current organisational size, annualised cost and structure, from the latest measure-engine read.' },
   structure: { title: 'Organisation chart', desc: 'The hierarchy of positions. Select a position to inspect its measures and cost build-up.' },
   measures: { title: 'Measures', desc: 'The standard measure library evaluated over the organisation scope.' },
   scenario: { title: 'Scenarios', desc: 'Model a restructure as a copy-on-write overlay and compare it with the baseline.' },
@@ -69,6 +69,10 @@ export function App(): JSX.Element {
     (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
   const [collapsed, setCollapsed] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [orgQuery, setOrgQuery] = useState('');
+  const [centerToken, setCenterToken] = useState(0);
+  const [expandToken, setExpandToken] = useState(0);
+  const [collapseToken, setCollapseToken] = useState(0);
   const railRef = useRef<HTMLElement>(null);
 
   const me = useQuery({ queryKey: ['me'], queryFn: () => api.me() });
@@ -128,6 +132,14 @@ export function App(): JSX.Element {
     push({ tone: 'info', title: 'Export is read-only in this demonstration', body: 'Report export to PowerPoint, Excel and PDF runs in the full application.' });
   }
 
+  function searchOrg(): void {
+    const q = orgQuery.trim().toLowerCase();
+    if (!q || !tree.data) return;
+    const hit = tree.data.nodes.find((n) => n.title.toLowerCase().includes(q) || n.id.toLowerCase().includes(q));
+    if (hit) { setSelected(hit); setCenterToken((t) => t + 1); }
+    else push({ tone: 'info', title: 'No matching position', body: `Nothing matches “${orgQuery}”.` });
+  }
+
   return (
     <div id="app" className={(collapsed ? 'rail-collapsed ' : '') + (navOpen ? 'nav-open' : '')}>
       <a className="skip-link" href="#main-content">Skip to main content</a>
@@ -167,8 +179,8 @@ export function App(): JSX.Element {
           <button className="iconbtn railtoggle" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'} onClick={() => setCollapsed((c) => !c)}>
             <Icon name="sidebar" />
           </button>
-          <span className="env" title="Environment and workspace">
-            <span className="dot" aria-hidden="true" /> Demonstration · demo workspace
+          <span className="env" title="Demonstration environment">
+            <span className="dot" aria-hidden="true" /> Demo workspace
           </span>
           <div className="spacer" />
           <button className="iconbtn" aria-label="Help" onClick={() => push({ tone: 'info', title: 'About this workspace', body: 'Every figure is computed by the measure engine over a synthetic 219-position organisation.' })}>
@@ -190,35 +202,37 @@ export function App(): JSX.Element {
               <h2>{page.title}</h2>
               <p>{page.desc}</p>
               <div className="ph-meta">
-                <span className="m-item field-inline">
-                  <label htmlFor="scenario-select">Reading</label>
-                </span>
+                <label htmlFor="scenario-select">Scenario</label>
                 <select
                   id="scenario-select"
                   className="control"
                   value={scenarioId}
                   onChange={(e) => setScenarioId(e.target.value)}
-                  aria-label="Scenario being read"
                 >
                   <option value={BASELINE}>Baseline</option>
                   {(scenarios.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                <span className="m-item"><Icon name="clock" /> Last updated <b>today</b></span>
+                <span className="m-item"><Icon name="clock" /> Effective date <b>{effectiveDate()}</b></span>
+                <span className="m-item">Source <b>Measure engine</b></span>
                 {scenarioId !== BASELINE && <span className="tag info plain">Scenario overlay</span>}
               </div>
             </div>
             <div className="ph-actions">
               {tab === 'scenario' ? (
-                <button className="btn btn-primary" onClick={() => { const el = document.getElementById('scenario-name'); el?.focus(); }}>
+                <button className="btn btn-primary" onClick={() => document.getElementById('scenario-name')?.focus()}>
                   <Icon name="plus" /> New scenario
                 </button>
-              ) : tab === 'ingestion' ? (
-                <span className="results-count">Analysis is performed below</span>
-              ) : (
-                <button className="btn btn-secondary" onClick={exportToast}>
+              ) : tab !== 'ingestion' ? (
+                <button className="btn btn-secondary desktop-only" onClick={exportToast}>
                   <Icon name="download" /> Export report
                 </button>
-              )}
+              ) : null}
+              <span className="ph-overflow">
+                <OverflowMenu label="More actions" actions={[
+                  { label: 'Export report', icon: 'download', onSelect: exportToast },
+                  { label: 'Metric definitions', icon: 'info', onSelect: () => go('measures') },
+                ]} />
+              </span>
             </div>
           </div>
         </div>
@@ -236,9 +250,7 @@ export function App(): JSX.Element {
                 <div className="chart-layout">
                   <section className="card" aria-label="Organisation chart">
                     <div className="card-pad toolbar" style={{ borderBottom: '1px solid var(--line)' }}>
-                      <div className="field-inline">
-                        <span id="colour-label" className="s-sub" style={{ fontWeight: 600 }}>Colour by</span>
-                      </div>
+                      <span id="colour-label" className="s-sub" style={{ fontWeight: 600 }}>Colour by</span>
                       <div className="seg" role="group" aria-labelledby="colour-label">
                         {(['division', 'span', 'cost'] as ColourMode[]).map((m) => (
                           <button key={m} aria-pressed={colourMode === m} onClick={() => setColourMode(m)}>
@@ -246,11 +258,25 @@ export function App(): JSX.Element {
                           </button>
                         ))}
                       </div>
+                      <form className="org-search" role="search" onSubmit={(e) => { e.preventDefault(); searchOrg(); }}>
+                        <Icon name="search" />
+                        <input aria-label="Search positions by role or identifier" placeholder="Search positions" value={orgQuery} onChange={(e) => setOrgQuery(e.target.value)} />
+                      </form>
+                      <button className="btn btn-secondary sm" onClick={() => setExpandToken((t) => t + 1)}>Expand all</button>
+                      <button className="btn btn-secondary sm" onClick={() => setCollapseToken((t) => t + 1)}>Collapse</button>
                       <span className="results-count" style={{ marginLeft: 'auto' }}>
                         {tree.data.nodes.length} positions{tree.data.truncated ? ' (truncated)' : ''}
                       </span>
                     </div>
-                    <OrgChart nodes={tree.data.nodes} selectedId={selected?.id ?? null} colourMode={colourMode} fitToken={fitToken} onSelect={setSelected} />
+                    <OrgChart
+                      nodes={tree.data.nodes} selectedId={selected?.id ?? null} colourMode={colourMode}
+                      fitToken={fitToken} onSelect={setSelected}
+                      centerToken={centerToken} expandAllToken={expandToken} collapseTopToken={collapseToken}
+                    />
+                    <p className="card-pad" style={{ margin: 0, borderTop: '1px solid var(--line)', fontSize: 13, color: 'var(--text-2)' }}>
+                      Numbered badges show hidden reports; select a badge to expand a branch. For a keyboard-accessible list of positions, see the{' '}
+                      <button className="link-btn" onClick={() => go('overview')} style={{ padding: 0 }}>position-level table on Overview</button>.
+                    </p>
                   </section>
                   <Inspector node={selected} nodes={tree.data.nodes} scenarioId={scenarioId} colourMode={colourMode} onNotify={push} />
                 </div>

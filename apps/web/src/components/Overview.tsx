@@ -20,60 +20,43 @@ function moneyShort(n: number): string {
   return '£' + Math.round(n);
 }
 
-// A donut chart (not the main organisation chart, so SVG is appropriate). Colour
-// carries division identity; the accompanying table is the accessible alternative.
-function Donut({ segments, total }: { segments: { label: string; value: number; colour: string }[]; total: number }): JSX.Element {
-  const size = 132;
-  const sw = 18;
-  const r = (size - sw) / 2;
-  const c = 2 * Math.PI * r;
-  const sum = segments.reduce((a, s) => a + s.value, 0) || 1;
-  let offset = 0;
+// Ranked horizontal comparison of a categorical measure. Bars are sorted by
+// value with direct labels, so no legend or angle comparison is required. The
+// preceding total and the accessible table (below) carry the same figures.
+function RankBars({ items, max }: { items: { label: string; value: number; share: number; colour: string }[]; max: number }): JSX.Element {
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
-      aria-label={`Loaded cost by division, total ${money(total)}`}>
-      <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--panel-inset)" strokeWidth={sw} />
-        {segments.map((s) => {
-          const len = (s.value / sum) * c;
-          const dash = Math.max(0, len - 2);
-          const el = (
-            <circle key={s.label} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.colour}
-              strokeWidth={sw} strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-offset} />
-          );
-          offset += len;
-          return el;
-        })}
-      </g>
-      <text x="50%" y="47%" textAnchor="middle" style={{ font: '650 18px var(--sans)', fill: 'var(--text)' }}>{moneyShort(total)}</text>
-      <text x="50%" y="61%" textAnchor="middle" style={{ font: '500 10px var(--sans)', fill: 'var(--muted)' }}>total</text>
-    </svg>
+    <div className="rankbars" role="img" aria-label="Loaded cost by division, ranked">
+      {items.map((it) => (
+        <div className="rankbar" key={it.label}>
+          <div className="rb-top">
+            <span className="rb-name"><span className="sw" style={{ background: it.colour }} />{it.label}</span>
+            <span className="rb-val">{moneyShort(it.value)}<span className="pct">{fmt(it.share, 0)}%</span></span>
+          </div>
+          <div className="rb-track"><div className="rb-fill" style={{ width: `${Math.max(2, (it.value / max) * 100)}%`, background: it.colour }} /></div>
+        </div>
+      ))}
+    </div>
   );
 }
 
-function Gauge({ label, value, display, max, band }: { label: string; value: number; display: string; max: number; band: [number, number] }): JSX.Element {
-  const size = 116;
-  const sw = 10;
-  const r = (size - sw) / 2;
-  const c = 2 * Math.PI * r;
-  const frac = Math.max(0, Math.min(1, value / max));
+// A target-band bullet row: the acceptable range is shaded, the current value is
+// marked, and the variance and direction are stated in words as well as by
+// a status tag, so meaning never rests on colour alone.
+function Bullet({ label, value, display, unit, max, band }: { label: string; value: number; display: string; unit: string; max: number; band: [number, number] }): JSX.Element {
   const [lo, hi] = band;
   const within = value >= lo && value <= hi;
-  const status = within ? 'Within target' : value < lo ? 'Below target' : 'Above target';
-  const colour = within ? 'var(--good)' : value < lo ? 'var(--warn)' : 'var(--crit)';
+  const pct = (v: number): number => Math.max(0, Math.min(100, (v / max) * 100));
+  const tone = within ? 'good' : 'warn';
+  const dist = within ? 0 : value < lo ? lo - value : value - hi;
+  const note = within ? 'Within range' : `${fmt(dist, unit === 'ratio' ? 1 : 0)}${unit === '%' ? ' pp' : ''} ${value < lo ? 'below' : 'above'} range`;
   return (
-    <div className="gauge">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
-        aria-label={`${label}: ${display}, ${status.toLowerCase()} (band ${lo} to ${hi})`}>
-        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--panel-inset)" strokeWidth={sw} />
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colour} strokeWidth={sw}
-            strokeLinecap="round" strokeDasharray={`${frac * c} ${c}`} />
-        </g>
-        <text x="50%" y="52%" textAnchor="middle" style={{ font: '650 22px var(--sans)', fill: 'var(--text)' }}>{display}</text>
-      </svg>
-      <div className="g-label">{label}</div>
-      <div className="g-band">{status} · {lo}–{hi}</div>
+    <div className="bullet" role="group" aria-label={`${label}: ${display}, ${note.toLowerCase()}, target ${lo} to ${hi}`}>
+      <div className="bl-top"><span className="bl-name">{label}</span><span className="bl-val">{display}</span></div>
+      <div className="bl-track">
+        <span className="bl-band" style={{ left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%` }} />
+        <span className="bl-marker" style={{ left: `${pct(value)}%`, background: within ? 'var(--good)' : 'var(--crit)' }} />
+      </div>
+      <div className="bl-note"><span className={'tag ' + tone}>{within ? 'On target' : value < lo ? 'Below' : 'Above'}</span> {note} · target {lo}–{hi}</div>
     </div>
   );
 }
@@ -181,8 +164,8 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
   const metrics = [
     { key: 'headcount', label: 'Total positions', value: fmt(m.headcount), raw: m.headcount, fav: undefined as boolean | undefined, foot: `${fmt(m.filled_headcount)} filled · ${fmt(m.vacancies)} vacant`, money: false },
     { key: 'fte', label: 'Full-time equivalent', value: fmt(m.fte, 0), raw: m.fte, fav: undefined, foot: 'Sum of position FTE', money: false },
-    { key: 'cost', label: 'Total loaded cost', value: fmtMoney(m.cost), raw: m.cost, fav: true, foot: 'Annual, fully loaded', money: true },
-    { key: 'cost_per_head', label: 'Cost per head', value: fmtMoney(m.cost_per_head), raw: m.cost_per_head, fav: true, foot: 'Loaded ÷ headcount', money: true },
+    { key: 'cost', label: 'Total loaded cost', value: fmtMoney(m.cost), raw: m.cost, fav: true, foot: 'Annualised, fully loaded', money: true },
+    { key: 'cost_per_head', label: 'Loaded cost per position', value: fmtMoney(m.cost_per_head), raw: m.cost_per_head, fav: true, foot: 'Loaded cost ÷ positions', money: true },
   ];
 
   return (
@@ -205,12 +188,12 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
           </div>
         )}
         <span className="results-count" style={{ marginLeft: 'auto' }} aria-live="polite">
-          {division === 'All' ? 'Showing all divisions' : `Filtered to ${division}`} · {fmt(nodes.length)} of {fmt(allNodes.length)} positions
+          {division === 'All' ? 'All divisions' : division} · {fmt(nodes.length)} position{nodes.length === 1 ? '' : 's'}
         </span>
       </div>
 
       {/* Current state */}
-      <div className="section-h"><h3 id="sec-state">Current state <span className="s-sub">· as at today{scenarioId !== BASELINE ? ' · scenario read' : ''}</span></h3></div>
+      <div className="section-h"><h3 id="sec-state">Current organisation{scenarioId !== BASELINE ? ' (scenario)' : ''}</h3></div>
       <div className="metric-grid" aria-labelledby="sec-state">
         {metrics.map((mt) => {
           const delta = basis ? mt.raw - (basis[mt.key] ?? 0) : null;
@@ -229,47 +212,41 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
 
       {/* Charts */}
       <div className="bento">
-        <section className="card card-pad col-4" aria-labelledby="cd-h">
-          <div className="section-h"><h3 id="cd-h">Loaded cost by division</h3></div>
+        <section className="card card-pad col-5" aria-labelledby="cd-h">
+          <div className="section-h"><h3 id="cd-h">Loaded cost by division</h3><span className="s-sub">Annualised, GBP</span></div>
           {hasCost ? (
             <>
-              <div className="donut-row">
-                <Donut segments={costByDiv} total={costTotal} />
-                <table className="legend-table">
-                  <caption className="s-sub" style={{ textAlign: 'left', marginBottom: 6 }}>Annual, GBP</caption>
-                  <thead><tr><th scope="col">Division</th><th scope="col" className="num">Cost</th><th scope="col" className="num">Share</th></tr></thead>
-                  <tbody>
-                    {costByDiv.map((s) => (
-                      <tr key={s.label}>
-                        <td><span className="sw" style={{ background: s.colour }} />{s.label}</td>
-                        <td className="num">{moneyShort(s.value)}</td>
-                        <td className="num">{fmt((s.value / costTotal) * 100, 0)}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="chart-foot"><span>Source: measure engine</span><span>As at today</span></div>
+              <RankBars items={costByDiv.map((s) => ({ label: s.label, value: s.value, share: (s.value / costTotal) * 100, colour: s.colour }))} max={Math.max(...costByDiv.map((s) => s.value), 1)} />
+              <table className="legend-table" style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                <caption className="s-sub" style={{ textAlign: 'left', margin: '8px 0 6px' }}>Accessible table</caption>
+                <thead><tr><th scope="col">Division</th><th scope="col" className="num">Cost</th><th scope="col" className="num">Share</th></tr></thead>
+                <tbody>
+                  {costByDiv.map((s) => (
+                    <tr key={s.label}><td>{s.label}</td><td className="num">{fmtMoney(s.value)}</td><td className="num">{fmt((s.value / costTotal) * 100, 0)}%</td></tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="chart-foot"><span>Source: measure engine</span><span>Total {fmtMoney(costTotal)}</span></div>
             </>
           ) : <div className="empty-state"><p>Per-position cost is not available in this read.</p></div>}
         </section>
 
         <section className="card card-pad col-4" aria-labelledby="tg-h">
-          <div className="section-h"><h3 id="tg-h">Structural targets</h3><span className="s-sub">Against reference bands</span></div>
-          <div className="gauge-row">
-            <Gauge label="Span of control" value={m.average_span} display={fmt(m.average_span, 1)} max={12} band={[5, 9]} />
-            <Gauge label="Managers" value={m.management_ratio * 100} display={fmt(m.management_ratio * 100, 0) + '%'} max={40} band={[15, 25]} />
-            <Gauge label="Vacancy" value={vacRate} display={fmt(vacRate, 1) + '%'} max={20} band={[0, 10]} />
+          <div className="section-h"><h3 id="tg-h">Structural measures</h3><span className="s-sub">vs reference band</span></div>
+          <div className="bullets">
+            <Bullet label="Average span of control" value={m.average_span} display={fmt(m.average_span, 1)} unit="ratio" max={12} band={[5, 9]} />
+            <Bullet label="Management ratio" value={m.management_ratio * 100} display={fmt(m.management_ratio * 100, 1) + '%'} unit="%" max={40} band={[15, 25]} />
+            <Bullet label="Vacancy rate" value={vacRate} display={fmt(vacRate, 1) + '%'} unit="%" max={20} band={[0, 10]} />
           </div>
-          <div className="chart-foot"><span>Reference bands are illustrative</span><span>As at today</span></div>
+          <div className="chart-foot"><span>Reference bands are illustrative</span></div>
         </section>
 
-        <section className="card card-pad col-4" aria-labelledby="ly-h">
-          <div className="section-h"><h3 id="ly-h">Organisation layering</h3><span className="s-sub">Headcount by depth</span></div>
+        <section className="card card-pad col-3" aria-labelledby="ly-h">
+          <div className="section-h"><h3 id="ly-h">Positions by layer</h3></div>
           <div className="barlist">
             {layerRows.map((r) => (
               <div className="b-row" key={r.layer}>
-                <span className="b-k">Depth {r.layer + 1}</span>
+                <span className="b-k">Layer {r.layer + 1}</span>
                 <div className="b-track"><div className="b-fill" style={{ width: `${Math.max(2, (r.count / maxLayerCount) * 100)}%` }} /></div>
                 <span className="b-v">{fmt(r.count)}</span>
               </div>

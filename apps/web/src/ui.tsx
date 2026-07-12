@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // A single coherent line-icon set (24px grid, 1.75 stroke). Icons are decorative
 // by default; interactive controls that use them provide their own accessible
@@ -43,17 +43,19 @@ export function Icon({ name }: { name: string }): JSX.Element {
   );
 }
 
-// One division -> colour map, shared by the org chart, the cost donut, the
-// legend and table swatches so a division reads the same everywhere. Ordered for
-// colour-vision separation; used only for categorical identity, never status.
+// One division -> colour map, shared by the org chart, the cost chart, the
+// legend and table swatches. Deliberately drawn from a cool/violet/magenta/slate
+// categorical range that excludes the semantic red, amber and green, so a
+// division colour is never confused with a status. Colour is always paired with
+// a text label, so it is never the sole distinction.
 export const DIVISION_COLOURS: Record<string, string> = {
   Executive: '#667085',
-  Technology: '#2a78d6',
-  Commercial: '#eb6834',
-  Operations: '#1baf7a',
-  Finance: '#b08900',
-  People: '#e34948',
-  Product: '#6c3fb5',
+  Technology: '#1570ef',
+  Operations: '#06aed4',
+  Commercial: '#6938ef',
+  Finance: '#dd2590',
+  People: '#9e77ed',
+  Product: '#0e7090',
   Unassigned: '#98a2b3',
 };
 
@@ -75,6 +77,55 @@ export function useToasts(): { toasts: Toast[]; push: (t: Omit<Toast, 'id'>) => 
     window.setTimeout(() => dismiss(id), 6000);
   }, [dismiss]);
   return { toasts, push, dismiss };
+}
+
+// A long date for audit-grade reporting, e.g. "12 July 2026". Computed in the
+// browser at view time; this is the effective (as-at) date of the read.
+export function effectiveDate(): string {
+  try {
+    return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+  } catch {
+    return 'today';
+  }
+}
+
+export interface MenuAction { label: string; onSelect: () => void; icon?: string; }
+
+// A small keyboard-accessible overflow menu. Opens on click, closes on Escape,
+// outside click or selection; focus returns to the trigger.
+export function OverflowMenu({ label, actions }: { label: string; actions: MenuAction[] }): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent): void => {
+      if (!menuRef.current?.contains(e.target as Node) && !btnRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') { setOpen(false); btnRef.current?.focus(); } };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  return (
+    <div className="menu-anchor">
+      <button ref={btnRef} className="iconbtn" aria-haspopup="menu" aria-expanded={open} aria-label={label} onClick={() => setOpen((o) => !o)}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="12" cy="19" r="1.6" /></svg>
+      </button>
+      {open && (
+        <div ref={menuRef} className="menu" role="menu" aria-label={label}>
+          {actions.map((a) => (
+            <button key={a.label} role="menuitem" className="menu-item" onClick={() => { setOpen(false); a.onSelect(); btnRef.current?.focus(); }}>
+              {a.icon && <Icon name={a.icon} />}{a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ToastHost({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }): JSX.Element {

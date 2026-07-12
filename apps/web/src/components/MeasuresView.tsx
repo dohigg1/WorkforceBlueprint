@@ -22,7 +22,7 @@ const DEFS: Def[] = [
   { key: 'layers', label: 'Layers', unit: 'levels', definition: 'Depth of the reporting structure, root to deepest report.', format: (v) => fmt(v) },
   { key: 'cost', label: 'Loaded cost', unit: 'GBP / year', definition: 'Fully loaded annual cost: base, on-costs, benefits, bonus and overhead.', format: (v) => fmtMoney(v) },
   { key: 'base_cost', label: 'Base cost', unit: 'GBP / year', definition: 'Base salary only, vacancy-adjusted.', format: (v) => fmtMoney(v) },
-  { key: 'cost_per_head', label: 'Cost per head', unit: 'GBP / year', definition: 'Loaded cost divided by headcount.', format: (v) => fmtMoney(v) },
+  { key: 'cost_per_head', label: 'Loaded cost per position', unit: 'GBP / year', definition: 'Loaded cost divided by the number of positions (filled and vacant).', format: (v) => fmtMoney(v) },
 ];
 
 export function MeasuresView({ scenarioId }: Props): JSX.Element {

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { TreeNode } from '../api.ts';
 import { DIVISION_COLOURS } from '../ui.tsx';
 
@@ -10,12 +11,15 @@ interface Props {
   colourMode: ColourMode;
   fitToken: number;
   onSelect: (node: TreeNode | null) => void;
+  centerToken?: number;
+  expandAllToken?: number;
+  collapseTopToken?: number;
 }
 
 // Card geometry and layout pitch, in world units.
-const NW = 200;
+const NW = 216;
 const NH = 72;
-const PITCH = 224;
+const PITCH = 244;
 const VGAP = 168;
 
 const DIV_COLOURS = DIVISION_COLOURS;
@@ -47,7 +51,7 @@ interface Layout {
 // a hundred thousand positions. Positions are laid out for the visible (expanded)
 // subtree; the client owns pan, zoom, hit-testing, viewport culling,
 // level-of-detail, collapse and paint, and draws each position as a card.
-export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: Props): JSX.Element {
+export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect, centerToken, expandAllToken, collapseTopToken }: Props): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const view = useRef({ x: 0, y: 0, s: 1 });
   const dpr = useRef(1);
@@ -55,6 +59,7 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
   const raf = useRef(0);
   const collapsed = useRef<Set<string>>(new Set());
   const lay = useRef<Layout>({ vis: [], px: new Map(), py: new Map(), kids: new Map() });
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
 
   const state = useRef({ nodes, selectedId, colourMode, hoveredId: null as string | null });
   state.current = { ...state.current, nodes, selectedId, colourMode };
@@ -400,7 +405,35 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
     scheduleDraw();
   }, [scheduleDraw]);
 
-  // On a new node set: default to showing the top three layers, then focus.
+  // Reveal a node (expanding its ancestors) and centre the view on it.
+  const centerOn = useCallback((id: string) => {
+    const ns = state.current.nodes;
+    const byId = new Map(ns.map((n) => [n.id, n]));
+    let cur = byId.get(id);
+    while (cur && cur.parent && byId.has(cur.parent)) { collapsed.current.delete(cur.parent); cur = byId.get(cur.parent); }
+    relayout();
+    const x = lay.current.px.get(id);
+    const y = lay.current.py.get(id);
+    const canvas = canvasRef.current;
+    if (x == null || y == null || !canvas) return;
+    const r = canvas.getBoundingClientRect();
+    const s = 0.9;
+    view.current.s = s;
+    view.current.x = r.width / 2 - (x + NW / 2) * s;
+    view.current.y = Math.max(44, r.height / 2 - (y + NH / 2) * s);
+    scheduleDraw();
+  }, [relayout, scheduleDraw]);
+
+  useEffect(() => { if (centerToken && selectedId) centerOn(selectedId); }, [centerToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (expandAllToken) { collapsed.current = new Set(); relayout(); fitAll(); scheduleDraw(); } }, [expandAllToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!collapseTopToken) return;
+    const c = new Set<string>();
+    for (const n of state.current.nodes) if (n.layer >= 1) c.add(n.id);
+    collapsed.current = c; relayout(); focusTop(); scheduleDraw();
+  }, [collapseTopToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // On a new node set: default to showing the top of house, then focus.
   useEffect(() => {
     const coll = new Set<string>();
     for (const n of nodes) if (n.layer >= 1) coll.add(n.id);
@@ -470,6 +503,14 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
       const { node, badge } = pick(e.clientX, e.clientY);
       const id = node?.id ?? null;
       canvas.style.cursor = badge ? 'pointer' : id ? 'pointer' : 'grab';
+      const r = canvas.getBoundingClientRect();
+      if (badge && node) {
+        const collapsedNode = collapsed.current.has(node.id);
+        const text = collapsedNode ? `${node.descendants} positions hidden in this branch` : `Collapse ${(lay.current.kids.get(node.id) ?? []).length} direct reports`;
+        setTip({ x: e.clientX - r.left, y: e.clientY - r.top, text });
+      } else {
+        setTip((t) => (t ? null : t));
+      }
       if (id !== state.current.hoveredId) {
         state.current.hoveredId = id;
         scheduleDraw();
@@ -491,6 +532,7 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
       canvas.classList.remove('grabbing');
     };
     const onLeave = (): void => {
+      setTip((t) => (t ? null : t));
       if (state.current.hoveredId) {
         state.current.hoveredId = null;
         scheduleDraw();
@@ -529,14 +571,34 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
     scheduleDraw();
   }
 
+  function onKey(e: ReactKeyboardEvent): void {
+    const step = 60;
+    if (e.key === 'ArrowLeft') { view.current.x += step; }
+    else if (e.key === 'ArrowRight') { view.current.x -= step; }
+    else if (e.key === 'ArrowUp') { view.current.y += step; }
+    else if (e.key === 'ArrowDown') { view.current.y -= step; }
+    else if (e.key === '+' || e.key === '=') { zoomBy(1.2); return; }
+    else if (e.key === '-' || e.key === '_') { zoomBy(1 / 1.2); return; }
+    else if (e.key === 'Home') { focusTop(); scheduleDraw(); return; }
+    else return;
+    e.preventDefault();
+    scheduleDraw();
+  }
+
   return (
     <div className="canvas-host">
-      <canvas ref={canvasRef} className="chart" />
+      <canvas
+        ref={canvasRef} className="chart" tabIndex={0}
+        role="application"
+        aria-label="Organisation chart. Drag or use the arrow keys to pan, plus and minus to zoom. A keyboard-accessible list of positions is available on the Overview page."
+        onKeyDown={onKey}
+      />
+      {tip && <div className="org-tooltip" style={{ left: tip.x, top: tip.y }} role="status">{tip.text}</div>}
       <div className="chart-controls">
-        <button title="Zoom in" onClick={() => zoomBy(1.25)}>+</button>
-        <button title="Zoom out" onClick={() => zoomBy(1 / 1.25)}>&minus;</button>
-        <button title="Expand all and fit" onClick={expandAll}>⤢</button>
-        <button title="Back to top" onClick={() => { const c = new Set<string>(); for (const n of state.current.nodes) if (n.layer >= 1) c.add(n.id); collapsed.current = c; relayout(); focusTop(); scheduleDraw(); }}>⌂</button>
+        <button title="Zoom in" aria-label="Zoom in" onClick={() => zoomBy(1.25)}>+</button>
+        <button title="Zoom out" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.25)}>&minus;</button>
+        <button title="Expand all and fit" aria-label="Expand all and fit" onClick={expandAll}>⤢</button>
+        <button title="Back to top of house" aria-label="Back to top of house" onClick={() => { const c = new Set<string>(); for (const n of state.current.nodes) if (n.layer >= 1) c.add(n.id); collapsed.current = c; relayout(); focusTop(); scheduleDraw(); }}>⌂</button>
       </div>
     </div>
   );
