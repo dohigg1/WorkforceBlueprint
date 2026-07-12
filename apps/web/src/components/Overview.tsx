@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, fmt, fmtMoney, BASELINE } from '../api.ts';
 import type { Scenario, TreeNode } from '../api.ts';
+import { Icon, DIVISION_COLOURS } from '../ui.tsx';
 
 interface Props {
   scenarioId: string;
@@ -9,89 +10,47 @@ interface Props {
   onNavigate: (tab: 'structure' | 'measures' | 'scenario' | 'ingestion') => void;
 }
 
-// Division palette, matching the org chart and inspector (CVD-validated order).
-const DIV_COLOURS: Record<string, string> = {
-  Executive: '#8a97ab',
-  Technology: '#2a78d6',
-  Commercial: '#eb6834',
-  Operations: '#1baf7a',
-  Finance: '#eda100',
-  People: '#e34948',
-  Product: '#4a3aa7',
-  Unassigned: '#8a97ab',
-};
-
 function money(n: number): string {
   if (Math.abs(n) >= 1_000_000) return '£' + (n / 1_000_000).toFixed(2) + 'M';
   return '£' + Math.round(n).toLocaleString('en-GB');
 }
-// Compact money for tight legend cells.
 function moneyShort(n: number): string {
   if (Math.abs(n) >= 1_000_000) return '£' + (n / 1_000_000).toFixed(1) + 'M';
   if (Math.abs(n) >= 1_000) return '£' + Math.round(n / 1_000) + 'k';
   return '£' + Math.round(n);
 }
 
-function Ico({ d }: { d: string }): JSX.Element {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-      <path d={d} />
-    </svg>
-  );
-}
-const I = {
-  people: 'M17 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87M16 2.13A4 4 0 0 1 16 10',
-  coins: 'M12 8c3.87 0 7-1.34 7-3s-3.13-3-7-3-7 1.34-7 3 3.13 3 7 3Zm7 -3v14c0 1.66-3.13 3-7 3s-7-1.34-7-3V5M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3',
-  wallet: 'M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M21 7H7a2 2 0 0 0 0 4h14v-4Zm-4 2h.01',
-  spark: 'M13 2 3 14h9l-1 8 10-12h-9l1-8Z',
-};
-
-// A donut, an SVG mark that is not the main organisation chart. Segments are
-// drawn as stroked arcs with a small gap between them; the centre carries the
-// total. Colour follows the division entity, never its rank.
-function Donut({ segments, total }: { segments: { label: string; value: number; colour: string }[]; total: string }): JSX.Element {
-  const size = 140;
-  const sw = 20;
+// A donut chart (not the main organisation chart, so SVG is appropriate). Colour
+// carries division identity; the accompanying table is the accessible alternative.
+function Donut({ segments, total }: { segments: { label: string; value: number; colour: string }[]; total: number }): JSX.Element {
+  const size = 132;
+  const sw = 18;
   const r = (size - sw) / 2;
   const c = 2 * Math.PI * r;
   const sum = segments.reduce((a, s) => a + s.value, 0) || 1;
-  const gap = 2.2;
   let offset = 0;
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Cost by division">
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
+      aria-label={`Loaded cost by division, total ${money(total)}`}>
       <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--panel-inset)" strokeWidth={sw} />
         {segments.map((s) => {
           const len = (s.value / sum) * c;
-          const dash = Math.max(0, len - gap);
+          const dash = Math.max(0, len - 2);
           const el = (
-            <circle
-              key={s.label}
-              cx={size / 2}
-              cy={size / 2}
-              r={r}
-              fill="none"
-              stroke={s.colour}
-              strokeWidth={sw}
-              strokeDasharray={`${dash} ${c - dash}`}
-              strokeDashoffset={-offset}
-              strokeLinecap="butt"
-            >
-              <title>{`${s.label}: ${money(s.value)}`}</title>
-            </circle>
+            <circle key={s.label} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.colour}
+              strokeWidth={sw} strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-offset} />
           );
           offset += len;
           return el;
         })}
       </g>
-      <text x="50%" y="47%" textAnchor="middle" style={{ font: '740 19px var(--sans)', fill: 'var(--text)', letterSpacing: '-0.03em' }}>{total}</text>
-      <text x="50%" y="61%" textAnchor="middle" style={{ font: '600 10px var(--sans)', fill: 'var(--faint)', letterSpacing: '0.02em' }}>loaded cost</text>
+      <text x="50%" y="47%" textAnchor="middle" style={{ font: '650 18px var(--sans)', fill: 'var(--text)' }}>{moneyShort(total)}</text>
+      <text x="50%" y="61%" textAnchor="middle" style={{ font: '500 10px var(--sans)', fill: 'var(--muted)' }}>total</text>
     </svg>
   );
 }
 
-// A radial gauge for a target-band measure. The arc fills to value/max; its
-// colour is the status against the band; the centre reads the value.
 function Gauge({ label, value, display, max, band }: { label: string; value: number; display: string; max: number; band: [number, number] }): JSX.Element {
   const size = 116;
   const sw = 10;
@@ -99,82 +58,60 @@ function Gauge({ label, value, display, max, band }: { label: string; value: num
   const c = 2 * Math.PI * r;
   const frac = Math.max(0, Math.min(1, value / max));
   const [lo, hi] = band;
-  const status = value < lo ? 'below' : value > hi ? 'above' : 'on';
-  const colour = status === 'on' ? 'var(--good)' : status === 'below' ? 'var(--warn)' : 'var(--crit)';
+  const within = value >= lo && value <= hi;
+  const status = within ? 'Within target' : value < lo ? 'Below target' : 'Above target';
+  const colour = within ? 'var(--good)' : value < lo ? 'var(--warn)' : 'var(--crit)';
   return (
     <div className="gauge">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img"
+        aria-label={`${label}: ${display}, ${status.toLowerCase()} (band ${lo} to ${hi})`}>
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--panel-inset)" strokeWidth={sw} />
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colour} strokeWidth={sw} strokeLinecap="round"
-            strokeDasharray={`${frac * c} ${c}`} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={colour} strokeWidth={sw}
+            strokeLinecap="round" strokeDasharray={`${frac * c} ${c}`} />
         </g>
-        <text x="50%" y="48%" textAnchor="middle" style={{ font: '740 24px var(--sans)', fill: 'var(--text)', letterSpacing: '-0.03em' }}>{display}</text>
-        <text x="50%" y="63%" textAnchor="middle" style={{ font: '600 9.5px var(--sans)', fill: colour, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{status === 'on' ? 'on target' : status + ' target'}</text>
+        <text x="50%" y="52%" textAnchor="middle" style={{ font: '650 22px var(--sans)', fill: 'var(--text)' }}>{display}</text>
       </svg>
       <div className="g-label">{label}</div>
-      <div className="g-band">target {lo} to {hi}</div>
+      <div className="g-band">{status} · {lo}–{hi}</div>
     </div>
   );
 }
 
-function Delta({ value, money: isMoney, pct }: { value: number; money?: boolean; pct?: number }): JSX.Element {
-  const flat = Math.abs(value) < (isMoney ? 0.5 : 0.005);
-  const dir = flat ? 'flat' : value < 0 ? 'down' : 'up';
-  const sign = value > 0 ? '+' : '';
-  const txt = flat ? 'no change' : `${sign}${isMoney ? fmtMoney(value) : fmt(value)}${pct != null ? ` (${sign}${fmt(pct, 1)}%)` : ''}`;
+function Trend({ delta, favourableWhenNegative, money: isMoney }: { delta: number; favourableWhenNegative?: boolean; money?: boolean }): JSX.Element {
+  const flat = Math.abs(delta) < (isMoney ? 0.5 : 0.005);
+  if (flat) return <span className="trend neutral">No change</span>;
+  const favourable = favourableWhenNegative === undefined ? undefined : (delta < 0) === favourableWhenNegative;
+  const tone = favourable === undefined ? 'neutral' : favourable ? 'favourable' : 'adverse';
+  const sign = delta > 0 ? '+' : '';
   return (
-    <span className={'delta-pill ' + dir}>
-      {!flat && (
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-          <path d={value < 0 ? 'M7 7l10 10M17 17H9M17 17V9' : 'M7 17 17 7M7 7h8M15 7v8'} />
-        </svg>
-      )}
-      {txt}
+    <span className={'trend ' + tone}>
+      <Icon name={delta > 0 ? 'upRight' : 'downRight'} />
+      {sign}{isMoney ? fmtMoney(delta) : fmt(delta)}
     </span>
   );
 }
 
-// The Overview: an executive reading of the one measure engine, arranged as a
-// modern analytics dashboard. Current state, the cost and shape of the
-// organisation as charts, and position-level detail. The division filter scopes
-// the layering and detail below.
 export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Element {
   const measures = useQuery({ queryKey: ['measures', scenarioId], queryFn: () => api.measures(scenarioId) });
   const tree = useQuery({ queryKey: ['tree', scenarioId], queryFn: () => api.tree(scenarioId) });
-
   const activeScenarioId = scenarioId !== BASELINE ? scenarioId : scenarios[0]?.id;
-  const compare = useQuery({
-    queryKey: ['compare', activeScenarioId],
-    queryFn: () => api.compare(activeScenarioId!),
-    enabled: !!activeScenarioId,
-  });
+  const compare = useQuery({ queryKey: ['compare', activeScenarioId], queryFn: () => api.compare(activeScenarioId!), enabled: !!activeScenarioId });
 
   const [division, setDivision] = useState('All');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const allNodes = tree.data?.nodes ?? [];
-  const divisions = useMemo(() => {
-    const s = new Set<string>();
-    for (const n of allNodes) s.add(n.division ?? 'Unassigned');
-    return [...s].sort();
-  }, [allNodes]);
-
+  const divisions = useMemo(() => [...new Set(allNodes.map((n) => n.division ?? 'Unassigned'))].sort(), [allNodes]);
   const nodes = useMemo(
     () => (division === 'All' ? allNodes : allNodes.filter((n) => (n.division ?? 'Unassigned') === division)),
     [allNodes, division],
   );
 
-  // Cost by division for the donut (real per-node cost rolled up).
   const costByDiv = useMemo(() => {
     const by = new Map<string, number>();
-    for (const n of allNodes) {
-      const d = n.division ?? 'Unassigned';
-      by.set(d, (by.get(d) ?? 0) + (n.cost ?? 0));
-    }
-    return [...by.entries()]
-      .map(([label, value]) => ({ label, value, colour: DIV_COLOURS[label] ?? '#8a97ab' }))
-      .sort((a, b) => b.value - a.value);
+    for (const n of allNodes) { const d = n.division ?? 'Unassigned'; by.set(d, (by.get(d) ?? 0) + (n.cost ?? 0)); }
+    return [...by.entries()].map(([label, value]) => ({ label, value, colour: DIVISION_COLOURS[label] ?? '#98a2b3' })).sort((a, b) => b.value - a.value);
   }, [allNodes]);
   const costTotal = costByDiv.reduce((a, s) => a + s.value, 0);
   const hasCost = allNodes.some((n) => n.cost != null);
@@ -183,9 +120,7 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
     const by = new Map<number, number>();
     for (const n of nodes) by.set(n.layer, (by.get(n.layer) ?? 0) + 1);
     const max = Math.max(...by.keys(), 0);
-    const out: { layer: number; count: number }[] = [];
-    for (let l = 0; l <= max; l++) out.push({ layer: l, count: by.get(l) ?? 0 });
-    return out;
+    return Array.from({ length: max + 1 }, (_, l) => ({ layer: l, count: by.get(l) ?? 0 }));
   }, [nodes]);
   const maxLayerCount = Math.max(1, ...layerRows.map((r) => r.count));
 
@@ -194,39 +129,22 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
     const kids = new Map<string, TreeNode[]>();
     const roots: TreeNode[] = [];
     for (const n of nodes) {
-      if (n.parent && set.has(n.parent)) {
-        const arr = kids.get(n.parent) ?? (kids.set(n.parent, []).get(n.parent) as TreeNode[]);
-        arr.push(n);
-      } else {
-        roots.push(n);
-      }
+      if (n.parent && set.has(n.parent)) (kids.get(n.parent) ?? (kids.set(n.parent, []).get(n.parent) as TreeNode[])).push(n);
+      else roots.push(n);
     }
-    const fteSum = new Map<string, number>();
-    const costSum = new Map<string, number>();
+    const fteSum = new Map<string, number>(); const costSum = new Map<string, number>();
     const walk = (n: TreeNode): [number, number] => {
-      let f = n.fte;
-      let cc = n.cost ?? 0;
-      for (const k of kids.get(n.id) ?? []) {
-        const [cf, ck] = walk(k);
-        f += cf;
-        cc += ck;
-      }
-      fteSum.set(n.id, f);
-      costSum.set(n.id, cc);
-      return [f, cc];
+      let f = n.fte; let cc = n.cost ?? 0;
+      for (const k of kids.get(n.id) ?? []) { const [cf, ck] = walk(k); f += cf; cc += ck; }
+      fteSum.set(n.id, f); costSum.set(n.id, cc); return [f, cc];
     };
     for (const rt of roots) walk(rt);
-    const rootFte = Math.max(1, ...roots.map((rt) => fteSum.get(rt.id) ?? 0));
-    const rootCost = Math.max(1, ...roots.map((rt) => costSum.get(rt.id) ?? 0));
-    return { kids, roots, fteSum, costSum, rootFte, rootCost };
+    return { kids, roots, fteSum, costSum, rootFte: Math.max(1, ...roots.map((r) => fteSum.get(r.id) ?? 0)), rootCost: Math.max(1, ...roots.map((r) => costSum.get(r.id) ?? 0)) };
   }, [nodes]);
 
   const defaultExpanded = useMemo(() => {
     const s = new Set<string>();
-    for (const rt of grid.roots) {
-      s.add(rt.id);
-      for (const k of grid.kids.get(rt.id) ?? []) s.add(k.id);
-    }
+    for (const rt of grid.roots) { s.add(rt.id); for (const k of grid.kids.get(rt.id) ?? []) s.add(k.id); }
     return s;
   }, [grid]);
   const effExpanded = expanded.size === 0 ? defaultExpanded : expanded;
@@ -236,140 +154,150 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
     const push = (n: TreeNode, depth: number): void => {
       const children = grid.kids.get(n.id) ?? [];
       rows.push({ node: n, depth, hasKids: children.length > 0 });
-      if (effExpanded.has(n.id)) {
-        const sorted = [...children].sort((a, b) => (grid.costSum.get(b.id) ?? 0) - (grid.costSum.get(a.id) ?? 0));
-        for (const cN of sorted) push(cN, depth + 1);
-      }
+      if (effExpanded.has(n.id)) for (const cN of [...children].sort((a, b) => (grid.costSum.get(b.id) ?? 0) - (grid.costSum.get(a.id) ?? 0))) push(cN, depth + 1);
     };
-    const sortedRoots = [...grid.roots].sort((a, b) => (grid.costSum.get(b.id) ?? 0) - (grid.costSum.get(a.id) ?? 0));
-    for (const rt of sortedRoots) push(rt, 0);
+    for (const rt of [...grid.roots].sort((a, b) => (grid.costSum.get(b.id) ?? 0) - (grid.costSum.get(a.id) ?? 0))) push(rt, 0);
     return rows.slice(0, 400);
   }, [grid, effExpanded]);
 
   function toggle(id: string): void {
     const next = new Set(effExpanded);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
+    next.has(id) ? next.delete(id) : next.add(id);
     setExpanded(next);
   }
 
-  if (measures.isLoading) return <div className="loading">Evaluating the organisation…</div>;
-  if (measures.isError) return <div className="view"><div className="msg err">Could not load measures: {(measures.error as Error).message}</div></div>;
+  if (measures.isLoading) {
+    return (
+      <div className="metric-grid" aria-busy="true" aria-label="Loading measures">
+        {[0, 1, 2, 3].map((i) => <div key={i} className="skeleton" style={{ height: 108 }} />)}
+      </div>
+    );
+  }
+  if (measures.isError) return <div className="alert crit" role="alert"><Icon name="alert" /><div className="a-body">Could not load measures. {(measures.error as Error).message}</div></div>;
   const m = measures.data!;
+  const basis = scenarioId !== BASELINE ? compare.data?.baseline : undefined;
   const vacRate = m.headcount ? (m.vacancies / m.headcount) * 100 : 0;
 
-  // Real scenario impact deltas for the KPI pills.
-  const cmp = compare.data;
-  const dHead = cmp ? (cmp.scenario.headcount ?? 0) - (cmp.baseline.headcount ?? 0) : null;
-  const dCost = cmp ? (cmp.scenario.cost ?? 0) - (cmp.baseline.cost ?? 0) : null;
-  const dCostPct = cmp && cmp.baseline.cost ? (dCost! / cmp.baseline.cost) * 100 : null;
-  const dCph = cmp ? (cmp.scenario.cost_per_head ?? 0) - (cmp.baseline.cost_per_head ?? 0) : null;
-  const scenarioName = scenarios.find((s) => s.id === activeScenarioId)?.name;
+  const metrics = [
+    { key: 'headcount', label: 'Total positions', value: fmt(m.headcount), raw: m.headcount, fav: undefined as boolean | undefined, foot: `${fmt(m.filled_headcount)} filled · ${fmt(m.vacancies)} vacant`, money: false },
+    { key: 'fte', label: 'Full-time equivalent', value: fmt(m.fte, 0), raw: m.fte, fav: undefined, foot: 'Sum of position FTE', money: false },
+    { key: 'cost', label: 'Total loaded cost', value: fmtMoney(m.cost), raw: m.cost, fav: true, foot: 'Annual, fully loaded', money: true },
+    { key: 'cost_per_head', label: 'Cost per head', value: fmtMoney(m.cost_per_head), raw: m.cost_per_head, fav: true, foot: 'Loaded ÷ headcount', money: true },
+  ];
 
   return (
-    <div className="view">
-      <div className="filterbar">
-        <span className="pages-lbl">Pages</span>
-        <span className={'chip' + (division !== 'All' ? ' active' : '')}>
-          <span className="chip-k">Division</span>
-          <select value={division} onChange={(e) => { setDivision(e.target.value); setExpanded(new Set()); }}>
-            <option value="All">All</option>
+    <div>
+      {/* Filter toolbar */}
+      <div className="toolbar" style={{ marginBottom: 16 }}>
+        <div className="filter-chip">
+          <label htmlFor="ov-division">Division</label>
+          <select id="ov-division" value={division} onChange={(e) => { setDivision(e.target.value); setExpanded(new Set()); }}>
+            <option value="All">All divisions</option>
             {divisions.map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
+        </div>
+        {division !== 'All' && (
+          <div className="active-filters">
+            <span className="remove-chip">Division: {division}
+              <button aria-label={`Remove division filter ${division}`} onClick={() => { setDivision('All'); setExpanded(new Set()); }}><Icon name="x" /></button>
+            </span>
+            <button className="link-btn" onClick={() => { setDivision('All'); setExpanded(new Set()); }}>Clear all</button>
+          </div>
+        )}
+        <span className="results-count" style={{ marginLeft: 'auto' }} aria-live="polite">
+          {division === 'All' ? 'Showing all divisions' : `Filtered to ${division}`} · {fmt(nodes.length)} of {fmt(allNodes.length)} positions
         </span>
-        <span className="chip"><span className="chip-k">Location</span><select disabled><option>All</option></select></span>
-        <span className="chip"><span className="chip-k">Cost centre</span><select disabled><option>All</option></select></span>
-        {scenarioName && <span className="scen-flag">Scenario impact vs {scenarioName}</span>}
       </div>
 
-      {/* KPI row */}
-      <div className="kpi-strip">
-        <div className="kpi-x">
-          <div className="top"><div className="lbl">Total positions</div><div className="ic"><Ico d={I.people} /></div></div>
-          <div className="num">{fmt(m.headcount)}</div>
-          {dHead != null && <Delta value={dHead} />}
-          <div className="foot">{fmt(m.filled_headcount)} filled · {fmt(m.vacancies)} vacant · {fmt(m.fte, 0)} FTE</div>
-        </div>
-        <div className="kpi-x">
-          <div className="top"><div className="lbl">Total loaded cost</div><div className="ic"><Ico d={I.coins} /></div></div>
-          <div className="num money">{fmtMoney(m.cost)}</div>
-          {dCost != null && <Delta value={dCost} money pct={dCostPct ?? undefined} />}
-          <div className="foot">annual, fully loaded</div>
-        </div>
-        <div className="kpi-x">
-          <div className="top"><div className="lbl">Cost per head</div><div className="ic"><Ico d={I.wallet} /></div></div>
-          <div className="num money">{fmtMoney(m.cost_per_head)}</div>
-          {dCph != null && <Delta value={dCph} money />}
-          <div className="foot">loaded ÷ headcount</div>
-        </div>
-        <div className="kpi-x">
-          <div className="top"><div className="lbl">Vacancy rate</div><div className="ic"><Ico d={I.spark} /></div></div>
-          <div className="num">{fmt(vacRate, 1)}%</div>
-          <span className={'delta-pill ' + (vacRate <= 10 ? 'down' : 'up')}>{vacRate <= 10 ? 'within 0–10% target' : 'above 0–10% target'}</span>
-          <div className="foot">{fmt(m.vacancies)} of {fmt(m.headcount)} positions open</div>
-        </div>
-      </div>
-
-      {/* Charts row */}
-      <div className="bento">
-        <div className="panel chart-card">
-          <div className="p-head"><div className="p-title">Cost by division</div></div>
-          <div className="p-sub" style={{ marginBottom: 8 }}>Where the {fmtMoney(costTotal)} loaded cost sits</div>
-          {hasCost ? (
-            <div className="donut-row">
-              <Donut segments={costByDiv} total={money(costTotal)} />
-              <div className="donut-legend">
-                {costByDiv.map((s) => (
-                  <div className="dl-row" key={s.label}>
-                    <span className="dl-dot" style={{ background: s.colour }} />
-                    <span className="dl-name">{s.label}</span>
-                    <span className="dl-val">{moneyShort(s.value)}</span>
-                    <span className="dl-pct">{fmt((s.value / costTotal) * 100, 0)}%</span>
-                  </div>
-                ))}
+      {/* Current state */}
+      <div className="section-h"><h3 id="sec-state">Current state <span className="s-sub">· as at today{scenarioId !== BASELINE ? ' · scenario read' : ''}</span></h3></div>
+      <div className="metric-grid" aria-labelledby="sec-state">
+        {metrics.map((mt) => {
+          const delta = basis ? mt.raw - (basis[mt.key] ?? 0) : null;
+          return (
+            <div className="metric" key={mt.key}>
+              <div className="m-label">{mt.label}</div>
+              <div className={'m-value' + (mt.money ? ' money' : '')}>{mt.value}</div>
+              <div className="m-foot">
+                {delta != null ? <Trend delta={delta} favourableWhenNegative={mt.fav} money={mt.money} /> : <span className="tnum">{mt.foot}</span>}
+                {delta != null && <span>vs baseline</span>}
               </div>
             </div>
-          ) : (
-            <div className="note">Per-position cost is not projected in this read.</div>
-          )}
-        </div>
+          );
+        })}
+      </div>
 
-        <div className="panel chart-card">
-          <div className="p-head"><div className="p-title">Targets</div></div>
-          <div className="p-sub" style={{ marginBottom: 12 }}>Structural health against reference bands</div>
+      {/* Charts */}
+      <div className="bento">
+        <section className="card card-pad col-4" aria-labelledby="cd-h">
+          <div className="section-h"><h3 id="cd-h">Loaded cost by division</h3></div>
+          {hasCost ? (
+            <>
+              <div className="donut-row">
+                <Donut segments={costByDiv} total={costTotal} />
+                <table className="legend-table">
+                  <caption className="s-sub" style={{ textAlign: 'left', marginBottom: 6 }}>Annual, GBP</caption>
+                  <thead><tr><th scope="col">Division</th><th scope="col" className="num">Cost</th><th scope="col" className="num">Share</th></tr></thead>
+                  <tbody>
+                    {costByDiv.map((s) => (
+                      <tr key={s.label}>
+                        <td><span className="sw" style={{ background: s.colour }} />{s.label}</td>
+                        <td className="num">{moneyShort(s.value)}</td>
+                        <td className="num">{fmt((s.value / costTotal) * 100, 0)}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="chart-foot"><span>Source: measure engine</span><span>As at today</span></div>
+            </>
+          ) : <div className="empty-state"><p>Per-position cost is not available in this read.</p></div>}
+        </section>
+
+        <section className="card card-pad col-4" aria-labelledby="tg-h">
+          <div className="section-h"><h3 id="tg-h">Structural targets</h3><span className="s-sub">Against reference bands</span></div>
           <div className="gauge-row">
             <Gauge label="Span of control" value={m.average_span} display={fmt(m.average_span, 1)} max={12} band={[5, 9]} />
             <Gauge label="Managers" value={m.management_ratio * 100} display={fmt(m.management_ratio * 100, 0) + '%'} max={40} band={[15, 25]} />
-            <Gauge label="Vacancy rate" value={vacRate} display={fmt(vacRate, 1) + '%'} max={20} band={[0, 10]} />
+            <Gauge label="Vacancy" value={vacRate} display={fmt(vacRate, 1) + '%'} max={20} band={[0, 10]} />
           </div>
-        </div>
+          <div className="chart-foot"><span>Reference bands are illustrative</span><span>As at today</span></div>
+        </section>
 
-        <div className="panel chart-card">
-          <div className="p-head"><div className="p-title">Organisation layering</div></div>
-          <div className="p-sub" style={{ marginBottom: 14 }}>Headcount by depth {division !== 'All' ? `· ${division}` : ''}</div>
-          <div className="layerbars">
+        <section className="card card-pad col-4" aria-labelledby="ly-h">
+          <div className="section-h"><h3 id="ly-h">Organisation layering</h3><span className="s-sub">Headcount by depth</span></div>
+          <div className="barlist">
             {layerRows.map((r) => (
-              <div className="lb-row" key={r.layer}>
-                <div className="lb-d">L{r.layer + 1}</div>
-                <div className="lb-track"><div className="lb-fill" style={{ width: `${Math.max(3, (r.count / maxLayerCount) * 100)}%` }} /></div>
-                <div className="lb-v">{fmt(r.count)}</div>
+              <div className="b-row" key={r.layer}>
+                <span className="b-k">Depth {r.layer + 1}</span>
+                <div className="b-track"><div className="b-fill" style={{ width: `${Math.max(2, (r.count / maxLayerCount) * 100)}%` }} /></div>
+                <span className="b-v">{fmt(r.count)}</span>
               </div>
             ))}
           </div>
-          <div className="pyr-foot"><span>{layerRows.length} layers</span><span>{fmt(nodes.length)} positions</span></div>
-        </div>
+          <div className="chart-foot"><span>{layerRows.length} layers</span><span>{fmt(nodes.length)} positions</span></div>
+        </section>
       </div>
 
-      {/* Detail grid */}
-      <div className="zone-title" style={{ marginTop: 30 }}>
-        Position-level detail
-        <button className="link-btn" style={{ marginLeft: 'auto' }} onClick={() => onNavigate('structure')}>Open org chart &rarr;</button>
+      {/* Position-level detail table */}
+      <div className="section-h" style={{ marginTop: 28 }}>
+        <div>
+          <h3 id="det-h">Position-level detail</h3>
+          <span className="s-sub">Subtree full-time equivalent and loaded cost, {division === 'All' ? 'whole organisation' : division}</span>
+        </div>
+        <button className="btn btn-secondary sm" onClick={() => onNavigate('structure')}><Icon name="org" /> Open chart</button>
       </div>
-      <div className="grid-wrap">
-        <div className="grid-scroll">
-          <table className="dgrid">
+      <div className="results-count" style={{ marginBottom: 8 }} aria-live="polite">Showing {fmt(visibleRows.length)} of {fmt(nodes.length)} positions</div>
+      <div className="table-wrap">
+        <div className="table-scroll">
+          <table className="data" aria-labelledby="det-h">
             <thead>
-              <tr><th>Role</th><th>Sum FTE</th><th>Sum fully loaded cost</th><th className="r">Span</th></tr>
+              <tr>
+                <th scope="col">Role</th>
+                <th scope="col" className="num">Sum FTE</th>
+                <th scope="col" className="num">Sum loaded cost (GBP)</th>
+                <th scope="col" className="num">Span</th>
+              </tr>
             </thead>
             <tbody>
               {visibleRows.map(({ node, depth, hasKids }) => {
@@ -379,16 +307,19 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
                   <tr key={node.id}>
                     <td>
                       <div className="rolecell" style={{ paddingLeft: 14 + depth * 18 }}>
-                        <span className={'chev' + (hasKids ? '' : ' leaf') + (effExpanded.has(node.id) ? ' open' : '')} onClick={() => hasKids && toggle(node.id)}>
-                          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M9 6l6 6-6 6" /></svg>
-                        </span>
-                        <span className="dot" style={{ background: DIV_COLOURS[node.division ?? 'Unassigned'] ?? '#8a97ab' }} />
-                        <span className={'nm' + (node.vacant ? ' vac' : '')} title={node.title}>{node.title}</span>
+                        {hasKids ? (
+                          <button className="disc" aria-expanded={effExpanded.has(node.id)} aria-label={(effExpanded.has(node.id) ? 'Collapse ' : 'Expand ') + node.title} onClick={() => toggle(node.id)}>
+                            <Icon name="chevronRight" />
+                          </button>
+                        ) : <span className="disc leaf" />}
+                        <span className="swatch" style={{ background: DIVISION_COLOURS[node.division ?? 'Unassigned'] ?? '#98a2b3' }} aria-hidden="true" />
+                        <span className="nm" title={node.title}>{node.title}</span>
+                        {node.vacant && <span className="tag warn" style={{ marginLeft: 4 }}>Vacant</span>}
                       </div>
                     </td>
-                    <td><div className="databar"><div className="track"><div className="fill fte" style={{ width: `${(fteV / grid.rootFte) * 100}%` }} /></div><div className="v">{fmt(fteV, fteV < 100 ? 1 : 0)}</div></div></td>
-                    <td><div className="databar"><div className="track">{hasCost && <div className="fill cost" style={{ width: `${(costV / grid.rootCost) * 100}%` }} />}</div><div className={'v' + (hasCost ? '' : ' muted')}>{hasCost ? money(costV) : '—'}</div></div></td>
-                    <td><div className="spancell">{node.span > 0 ? fmt(node.span) : '—'}</div></td>
+                    <td><div className="databar"><div className="track"><div className="fill" style={{ width: `${(fteV / grid.rootFte) * 100}%` }} /></div><span className="v">{fmt(fteV, fteV < 100 ? 1 : 0)}</span></div></td>
+                    <td><div className="databar"><div className="track">{hasCost && <div className="fill" style={{ width: `${(costV / grid.rootCost) * 100}%` }} />}</div><span className={'v' + (hasCost ? '' : ' muted')}>{hasCost ? money(costV) : 'Not available'}</span></div></td>
+                    <td className="cell num">{node.span > 0 ? fmt(node.span) : '—'}</td>
                   </tr>
                 );
               })}

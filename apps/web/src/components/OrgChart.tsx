@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { TreeNode } from '../api.ts';
+import { DIVISION_COLOURS } from '../ui.tsx';
 
 export type ColourMode = 'division' | 'span' | 'cost';
 
@@ -17,15 +18,7 @@ const NH = 72;
 const PITCH = 224;
 const VGAP = 168;
 
-const DIV_COLOURS: Record<string, string> = {
-  Executive: '#8a97ab',
-  Technology: '#2a78d6',
-  Commercial: '#eb6834',
-  Operations: '#1baf7a',
-  Finance: '#eda100',
-  People: '#e34948',
-  Product: '#4a3aa7',
-};
+const DIV_COLOURS = DIVISION_COLOURS;
 
 function hexToRgb(h: string): [number, number, number] {
   let s = h.replace('#', '');
@@ -139,7 +132,7 @@ export function OrgChart({ nodes, selectedId, colourMode, fitToken, onSelect }: 
     const line = cssVar('--line-strong', '#d7dde7');
     const text = cssVar('--text', '#0a2540');
     const muted = cssVar('--muted', '#556987');
-    const faint = cssVar('--faint', '#8a97ab');
+    const faint = cssVar('--muted', '#697586');
     const panel = cssVar('--panel', '#ffffff');
     const inset = cssVar('--panel-inset', '#f2f5fa');
     const accent = cssVar('--accent', '#635bff');
