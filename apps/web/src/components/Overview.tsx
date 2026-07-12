@@ -2,7 +2,14 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, fmt, fmtMoney, BASELINE } from '../api.ts';
 import type { Scenario, TreeNode } from '../api.ts';
-import { Icon, DIVISION_COLOURS } from '../ui.tsx';
+import { Icon, DIVISION_COLOURS, InfoPopover, effectiveDate, type MetricDef } from '../ui.tsx';
+
+const METRIC_DEFS: Record<string, MetricDef> = {
+  headcount: { title: 'Total positions', formula: 'count(positions in scope)', detail: 'Seats in the organisation, filled or vacant. A vacant seat is still counted.', period: 'As at effective date', source: 'Measure engine' },
+  fte: { title: 'Full-time equivalent', formula: 'sum(position FTE)', detail: 'Sum of full-time-equivalent apportionment across positions in scope.', period: 'As at effective date', source: 'Measure engine' },
+  cost: { title: 'Total loaded cost', formula: 'sum(base + on-costs + benefits + bonus + overhead)', detail: 'Fully loaded annual cost of all positions in scope, vacancy-adjusted.', period: 'Annualised', source: 'Measure engine' },
+  cost_per_head: { title: 'Loaded cost per position', formula: 'total loaded cost ÷ positions', detail: 'Divided by all positions (filled and vacant), not by filled incumbents.', period: 'Annualised', source: 'Measure engine' },
+};
 
 interface Props {
   scenarioId: string;
@@ -158,6 +165,7 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
   }
   if (measures.isError) return <div className="alert crit" role="alert"><Icon name="alert" /><div className="a-body">Could not load measures. {(measures.error as Error).message}</div></div>;
   const m = measures.data!;
+  const scenarioName = scenarioId === BASELINE ? 'Baseline' : scenarios.find((s) => s.id === scenarioId)?.name ?? 'Scenario';
   const basis = scenarioId !== BASELINE ? compare.data?.baseline : undefined;
   const vacRate = m.headcount ? (m.vacancies / m.headcount) * 100 : 0;
 
@@ -199,7 +207,7 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
           const delta = basis ? mt.raw - (basis[mt.key] ?? 0) : null;
           return (
             <div className="metric" key={mt.key}>
-              <div className="m-label">{mt.label}</div>
+              <div className="m-label">{mt.label}{METRIC_DEFS[mt.key] && <InfoPopover def={METRIC_DEFS[mt.key]} />}</div>
               <div className={'m-value' + (mt.money ? ' money' : '')}>{mt.value}</div>
               <div className="m-foot">
                 {delta != null ? <Trend delta={delta} favourableWhenNegative={mt.fav} money={mt.money} /> : <span className="tnum">{mt.foot}</span>}
@@ -304,6 +312,25 @@ export function Overview({ scenarioId, scenarios, onNavigate }: Props): JSX.Elem
           </table>
         </div>
       </div>
+
+      <details className="govern">
+        <summary><Icon name="info" /> Data and governance <Icon name="chevronRight" /></summary>
+        <div className="g-body">
+          <div className="govern-grid">
+            <div className="gg-row"><span className="k">Reading</span><span className="v">{scenarioName}</span></div>
+            <div className="gg-row"><span className="k">Effective date</span><span className="v tnum">{effectiveDate()}</span></div>
+            <div className="gg-row"><span className="k">Data source</span><span className="v">Measure engine</span></div>
+            <div className="gg-row"><span className="k">Dataset</span><span className="v">Synthetic, {fmt(allNodes.length)} positions</span></div>
+            <div className="gg-row"><span className="k">Environment</span><span className="v">Demonstration</span></div>
+            <div className="gg-row"><span className="k">Record owner</span><span className="v">Demo workspace</span></div>
+            <div className="gg-row"><span className="k">Cost data classification</span><span className="v">Restricted (personal)</span></div>
+            <div className="gg-row"><span className="k">Your access</span><span className="v">Owner · cost visible</span></div>
+          </div>
+          <p className="s-sub" style={{ marginTop: 12, marginBottom: 0 }}>
+            Individual position cost is masked by default and shown here because the reader holds the owner role. Row-level security is enforced server-side; client controls do not confer access.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }

@@ -128,6 +128,49 @@ export function OverflowMenu({ label, actions }: { label: string; actions: MenuA
   );
 }
 
+// A definition for the metric information popover.
+export interface MetricDef {
+  title: string;
+  formula: string;
+  detail: string;
+  period: string;
+  source: string;
+}
+
+// An accessible information popover, opened from a small info button. Escape,
+// outside click or a second click closes it; focus returns to the trigger.
+export function InfoPopover({ def }: { def: MetricDef }): JSX.Element {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent): void => { if (!popRef.current?.contains(e.target as Node) && !btnRef.current?.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') { setOpen(false); btnRef.current?.focus(); } };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  return (
+    <span className="info-anchor">
+      <button ref={btnRef} type="button" className="info-btn" aria-expanded={open} aria-label={`About ${def.title}`} onClick={() => setOpen((o) => !o)}>
+        <Icon name="info" />
+      </button>
+      {open && (
+        <div ref={popRef} className="info-pop" role="dialog" aria-label={`${def.title} definition`}>
+          <div className="ip-title">{def.title}</div>
+          <dl className="ip-dl">
+            <dt>Formula</dt><dd>{def.formula}</dd>
+            <dt>Definition</dt><dd>{def.detail}</dd>
+            <dt>Period</dt><dd>{def.period}</dd>
+            <dt>Source</dt><dd>{def.source}</dd>
+          </dl>
+        </div>
+      )}
+    </span>
+  );
+}
+
 export function ToastHost({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }): JSX.Element {
   return (
     <div className="toast-wrap" role="region" aria-label="Notifications">

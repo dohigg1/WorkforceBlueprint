@@ -310,13 +310,40 @@ select.control:hover, input.control:hover { border-color: var(--muted); }
   .metric-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
   .metric { padding: 14px; }
   .metric .m-value { font-size: 22px; line-height: 28px; }
-  .metric .m-value.money { font-size: 19px; }
+  .metric .m-value.money { font-size: 18px; }
 }
+/* Strict reflow (WCAG 1.4.10): single column below 360px so long currency
+   values never force horizontal scrolling. */
+@media (max-width: 359px) { .metric-grid { grid-template-columns: 1fr; } }
 .metric { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-card); padding: 16px; }
 .metric .m-label { font-size: 13px; color: var(--text-2); font-weight: 500; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .metric .m-value { font-size: 28px; line-height: 34px; font-weight: 650; letter-spacing: -0.02em; margin-top: 8px; font-variant-numeric: tabular-nums; }
 .metric .m-value.money { font-size: 24px; }
 .metric .m-foot { margin-top: 10px; font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+/* Metric information popover */
+.info-anchor { position: relative; display: inline-flex; }
+.info-btn { width: 24px; height: 24px; border: 0; background: transparent; color: var(--muted); cursor: pointer; border-radius: var(--r-control); display: grid; place-items: center; }
+.info-btn svg { width: 15px; height: 15px; }
+.info-btn:hover { color: var(--text); background: var(--panel-inset); }
+.info-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 260px; background: var(--panel); border: 1px solid var(--line-strong); border-radius: var(--r-card); box-shadow: var(--shadow-menu); padding: 12px 14px; }
+.info-pop .ip-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.ip-dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 12px; }
+.ip-dl dt { color: var(--muted); font-weight: 600; }
+.ip-dl dd { margin: 0; color: var(--text-2); }
+
+/* Governance / lineage panel */
+.govern { border: 1px solid var(--line); border-radius: var(--r-card); background: var(--panel); margin-top: 28px; }
+.govern > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
+.govern > summary::-webkit-details-marker { display: none; }
+.govern > summary svg { width: 18px; height: 18px; color: var(--muted); }
+.govern > summary .chev { margin-left: auto; transition: transform 0.15s; }
+.govern[open] > summary .chev { transform: rotate(90deg); }
+.govern .g-body { padding: 0 16px 16px; }
+.govern-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0 24px; }
+.govern-grid .gg-row { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.govern-grid .gg-row .k { color: var(--text-2); }
+.govern-grid .gg-row .v { font-weight: 600; text-align: right; }
+
 .trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
 .trend svg { width: 14px; height: 14px; }
 .trend.favourable { color: var(--good); }

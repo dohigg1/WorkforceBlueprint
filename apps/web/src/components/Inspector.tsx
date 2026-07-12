@@ -113,6 +113,13 @@ export function Inspector({ node, nodes, scenarioId, colourMode, onNotify }: Pro
         </form>
       )}
 
+      <div className="section-h" style={{ margin: '16px 0 4px' }}><h3 style={{ fontSize: 14 }}>Governance</h3></div>
+      <div className="detail-list">
+        <Row k="Record status" v="Active" />
+        <Row k="Data source" v="Synthetic extract" />
+        <Row k="Cost classification" v={cost.data?.masked ? 'Restricted' : 'Restricted (visible to owner)'} />
+      </div>
+
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--line)' }}>{legend}</div>
     </aside>
   );

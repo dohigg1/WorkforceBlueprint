@@ -73,10 +73,17 @@ export function ScenarioView({ scenarioId, scenarios, onSelectScenario, onNotify
               <tr key={row.id}>
                 <td className="cell" style={{ fontWeight: 600 }}>{row.name}</td>
                 <td className="cell"><span className={'tag ' + (row.kind === 'live' ? 'good' : 'info')}>{row.kind === 'live' ? 'Baseline' : 'Overlay'}</span></td>
-                <td className="cell">
+                <td className="cell" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   {scenarioId === row.id
                     ? <span className="tag neutral plain">Currently reading</span>
                     : <button className="link-btn" onClick={() => onSelectScenario(row.id)}>Read this</button>}
+                  {row.kind === 'overlay' && (
+                    <button className="link-btn" style={{ color: 'var(--muted)' }} aria-disabled="true"
+                      title="Merging a scenario into the baseline requires an administrator role"
+                      onClick={() => onNotify({ tone: 'info', title: 'Insufficient permissions', body: 'Merging a scenario into the baseline requires an administrator role.' })}>
+                      Merge to baseline
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
