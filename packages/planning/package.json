@@ -1,0 +1,27 @@
+{
+  "name": "@wfb/planning",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build"
+  },
+  "dependencies": {
+    "@wfb/tenancy": "workspace:*",
+    "@wfb/scenarios": "workspace:*",
+    "@wfb/measures": "workspace:*",
+    "pg": "^8.13.1",
+    "@wfb/hierarchy": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.11.10"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "name": "workforce-blueprint",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Multi-tenant SaaS for organisation design, workforce planning and cost modelling",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build --force",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:setup": "bash scripts/setup-db.sh",
+    "seed": "tsx scripts/seed-synthetic.ts",
+    "verify": "bash scripts/verify.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "@wfb/tenancy": "workspace:*",
+    "eslint": "^9.17.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "@wfb/data-model": "workspace:*",
+    "@wfb/audit": "workspace:*",
+    "@wfb/hierarchy": "workspace:*",
+    "@wfb/scenarios": "workspace:*",
+    "@wfb/measures": "workspace:*",
+    "@wfb/costing": "workspace:*",
+    "@wfb/ingestion": "workspace:*",
+    "@wfb/api": "workspace:*",
+    "@wfb/web": "workspace:*",
+    "@wfb/ai": "workspace:*",
+    "@wfb/render": "workspace:*",
+    "@wfb/skills": "workspace:*",
+    "@wfb/planning": "workspace:*",
+    "@wfb/partner": "workspace:*",
+    "@wfb/compliance": "workspace:*",
+    "@wfb/connectors": "workspace:*",
+    "@wfb/intelligence": "workspace:*"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

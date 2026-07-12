@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-static/
+*.tsbuildinfo
+coverage/
+.env
+.env.local
+pgdata/
+*.log
+.DS_Store
+.vitest/
