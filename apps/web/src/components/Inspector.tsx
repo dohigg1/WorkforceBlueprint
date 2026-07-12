@@ -8,7 +8,7 @@ interface Props {
   node: TreeNode | null;
   nodes: TreeNode[];
   scenarioId: string;
-  colourMode: 'division' | 'span';
+  colourMode: 'division' | 'span' | 'cost';
 }
 
 function Stat({ k, v }: { k: string; v: string | number }): JSX.Element {
@@ -149,7 +149,7 @@ export function Inspector({ node, nodes, scenarioId, colourMode }: Props): JSX.E
       )}
 
       <div className="legend">
-        {colourMode === 'division' ? (
+        {colourMode === 'division' &&
           Object.keys(DIV_COLOURS)
             .filter((d) => d !== 'Executive')
             .map((d) => (
@@ -157,17 +157,17 @@ export function Inspector({ node, nodes, scenarioId, colourMode }: Props): JSX.E
                 <i style={{ background: DIV_COLOURS[d] }} />
                 {d}
               </span>
-            ))
-        ) : (
+            ))}
+        {colourMode === 'span' && (
           <>
-            <span>
-              <i style={{ background: '#aab6cf' }} />
-              low span
-            </span>
-            <span>
-              <i style={{ background: 'var(--accent)' }} />
-              high span
-            </span>
+            <span><i style={{ background: '#aab6cf' }} />low span</span>
+            <span><i style={{ background: '#2a78d6' }} />high span</span>
+          </>
+        )}
+        {colourMode === 'cost' && (
+          <>
+            <span><i style={{ background: '#cfe0f5' }} />lower cost</span>
+            <span><i style={{ background: '#1c4fd6' }} />higher cost</span>
           </>
         )}
         <span>

@@ -259,12 +259,16 @@ export function App(): JSX.Element {
               <div className="chart-wrap">
                 <div className="canvas-shell">
                   <div className="toolbar">
+                    <span className="tool-lbl">Colour</span>
                     <div className="grp">
                       <button aria-pressed={colourMode === 'division'} onClick={() => setColourMode('division')}>
                         Division
                       </button>
                       <button aria-pressed={colourMode === 'span'} onClick={() => setColourMode('span')}>
                         Span
+                      </button>
+                      <button aria-pressed={colourMode === 'cost'} onClick={() => setColourMode('cost')}>
+                        Cost
                       </button>
                     </div>
                     <button className="fitbtn" style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 'var(--radius-sm)', color: 'var(--muted)', font: '600 11.5px var(--sans)' }} onClick={() => setFitToken((n) => n + 1)}>

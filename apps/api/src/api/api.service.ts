@@ -256,5 +256,11 @@ function layout(nodes: Omit<TreeNode, 'x' | 'y'>[]): TreeNode[] {
     x.set(id, (x.get(kids[0]!)! + x.get(kids[kids.length - 1]!)!) / 2);
   };
   for (const r of nodes.filter((n) => !n.parent || !byId.has(n.parent))) walk(r.id);
-  return nodes.map((n) => ({ ...n, x: (x.get(n.id) ?? 0) * 26, y: n.layer * 120 }));
+  // Card-aware pitch: leaves are spaced by a full card width plus a gutter, and
+  // layers by a card height plus room for the connectors, so the client can
+  // render readable position cards without overlap. World units; the client
+  // owns pan and zoom on top.
+  const NODE_PITCH = 232;
+  const LAYER_GAP = 176;
+  return nodes.map((n) => ({ ...n, x: (x.get(n.id) ?? 0) * NODE_PITCH, y: n.layer * LAYER_GAP }));
 }
