@@ -6,7 +6,7 @@ import { OrgChart } from './components/OrgChart.tsx';
 import type { ColourMode } from './components/OrgChart.tsx';
 import { Inspector } from './components/Inspector.tsx';
 import { MeasuresView } from './components/MeasuresView.tsx';
-import { ScenarioView } from './components/ScenarioView.tsx';
+import { ScenarioBuilder } from './components/ScenarioBuilder.tsx';
 import { IngestionView } from './components/IngestionView.tsx';
 import { Overview } from './components/Overview.tsx';
 import { Icon, useToasts, ToastHost, OverflowMenu, effectiveDate } from './ui.tsx';
@@ -25,7 +25,7 @@ const PAGE: Record<Tab, { title: string; desc: string }> = {
   overview: { title: 'Overview', desc: 'Current organisational size, annualised cost and structure, from the latest measure-engine read.' },
   structure: { title: 'Organisation chart', desc: 'The hierarchy of positions. Select a position to inspect its measures and cost build-up.' },
   measures: { title: 'Measures', desc: 'The standard measure library evaluated over the organisation scope.' },
-  scenario: { title: 'Scenarios', desc: 'Model a restructure as a copy-on-write overlay and compare it with the baseline.' },
+  scenario: { title: 'Scenario builder', desc: 'Model a restructure by pulling levers or editing positions; the impact recomputes against the baseline as you work.' },
   ingestion: { title: 'Data ingestion', desc: 'Map a workforce extract to the canonical model and assess its quality before loading.' },
 };
 
@@ -285,7 +285,7 @@ export function App(): JSX.Element {
           )}
 
           {tab === 'measures' && <MeasuresView scenarioId={scenarioId} />}
-          {tab === 'scenario' && <ScenarioView scenarioId={scenarioId} scenarios={scenarios.data ?? []} onSelectScenario={setScenarioId} onNotify={push} />}
+          {tab === 'scenario' && <ScenarioBuilder scenarios={scenarios.data ?? []} onNotify={push} />}
           {tab === 'ingestion' && <IngestionView />}
         </main>
       </div>
